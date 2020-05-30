@@ -1,0 +1,18 @@
+Bugs:
+1. Fix crash while getPix sometimes
+2. Fix sidePos delay
+
+Features:
+1. Add instruction text
+2. Add height input
+3. Add Bootstrap UI
+
+
+shoudler: 45
+length: 68
+mid: 90
+chest 97
+waist 94
+
+WAIST
+25 38
