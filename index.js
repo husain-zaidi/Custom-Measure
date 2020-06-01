@@ -11,7 +11,11 @@ window.onload = (e) => {
     new Vue({
         el: '#app',
         render: h => h(app),
-        vuetify: new Vuetify(),
+        vuetify: new Vuetify( {
+            theme: {
+                dark: true,
+            },
+        }),
     })
 
 

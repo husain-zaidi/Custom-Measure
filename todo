@@ -1,11 +1,10 @@
 Bugs:
 1. Fix crash while getPix sometimes
-2. Fix sidePos delay
 
 Features:
 1. Add instruction text
 2. Add height input
-3. Add Bootstrap UI
+3. Add measurement info output
 
 
 shoudler: 45

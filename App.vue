@@ -1,27 +1,59 @@
 <template>
      <v-app>
-        {{ message }}
         <v-content>
-            <v-container>
-                <v-row 
-                    align="center"
-                    justify="center"
-                >
-                    <v-col>
-                        <video autoplay="true" id="video"></video>
-                        <canvas id="output"></canvas>
-                        <canvas id="snap1"></canvas>
-                        <canvas id="snap2"></canvas>
+            <v-app-bar>
+                <v-toolbar-title> Custom Measure </v-toolbar-title>
 
-                        <canvas id="canvas1" width="453" height="701"></canvas>
-                        <canvas id="canvas2" width="453" height="701"> </canvas>
-                        <img id="image1" src="img/test15.jpg" alt="">
-                        <img id="image2" src="img/test16.jpg" alt="">
-                    </v-col>
-                </v-row>
+            </v-app-bar>
+            <!-- <v-tabs>
+                <v-tab>App</v-tab>
+                <v-tab>Dev Data</v-tab>
+                <v-tab-item>
+                </v-tab-item>
+                <v-tab-item>
+               
+                </v-tab-item>
+            </v-tabs> -->
+            
+            <v-container>
+                <video autoplay="true" id="video"></video>
+                <v-card class="d-flex justify-center align-center flex-column">
+                    <p class="my-5">{{instruction}}</p>
+                    <canvas  id="output"></canvas>
+                    <v-text-field 
+                        label="height"
+                        type="number" 
+                        v-model="height"
+                        dense
+                        outlined 
+                        class="my-5"
+                        append-outer-icon="mdi-chevron-right-box" 
+                        @click:append-outer="submitHeight">
+                    </v-text-field>
+                </v-card>   
+                <v-card class="d-flex justify-center align-center flex-column">
+<pre>
+Shoulder Length: {{measurements.shoulder}} cm
+Shirt Length:    {{measurements.length}} cm
+Chest:           {{measurements.chest}} cm
+Waist:           {{measurements.waist}} cm
+</pre>
+                   
+                </v-card>
+            </v-container>
+             <v-container fluid>
+                <canvas id="snap1"></canvas>
+                <canvas id="snap2"></canvas>
+
+                <canvas id="canvas1" width="453" height="701"></canvas>
+                <canvas id="canvas2" width="453" height="701"> </canvas>
+                <img id="image1" src="img/test15.jpg" alt="">
+                <img id="image2" src="img/test16.jpg" alt="">
             </v-container>
         </v-content>
+        
     </v-app>
+
 </template>
 
 <script>
@@ -45,6 +77,7 @@ var prevFactor = 0;
 var prevChestDepth = 0;
 
 var measurements = {
+    height: 0,
     chest: 0,
     shoulder: 0,
     length: 0,
@@ -159,7 +192,7 @@ function getScores(segmentation, idealScore){
     return true;
 }
 
-async function predict(){
+async function predictF(vm){
     
     
     var leftShoulder;
@@ -169,12 +202,16 @@ async function predict(){
     var leftAnkle;
     var leftHip;
     var leftElbow;
-    const opacity = 0.7;
+    const opacity = 0.5;
     const flipHorizontal = false;
     const maskBlurAmount = 0;
 
     switch(state){
         case 0:
+            //console.log(vm);
+            break;
+        case 1:
+            vm.instruction = "Stand Straight and stay still, Make sure your full length is in view of camera";
             // person segment that shit and draw
             //front measurement
             const frontSegementation = await model.segmentPersonParts(video,{
@@ -193,7 +230,6 @@ async function predict(){
                 leftHip = frontSegementation.allPoses[0].keypoints[11];
                 leftElbow = frontSegementation.allPoses[0].keypoints[7];
             
-            
                 // draw the mask
                 const frontMask = bodyPix.toColoredPartMask(frontSegementation);
                 bodyPix.drawMask(canvas, video, frontMask, opacity, maskBlurAmount, flipHorizontal);
@@ -208,7 +244,7 @@ async function predict(){
 
                 // calculate measurements if score is more that 75% and increment state
                 if(getScores(frontSegementation, 0.9)){
-                    getPixToCm(ctx, 167, leftEye, leftAnkle, frontMask);
+                    getPixToCm(ctx, measurements.height, leftEye, leftAnkle, frontMask);
                     const shoulderLeft = getBlobEdge("right", leftShoulder.position, frontMask, false);
                     const shoulderRight = getBlobEdge("left", rightShoulder.position, frontMask, false);
                     
@@ -226,14 +262,16 @@ async function predict(){
                     var shirtLeft = getBlobEdge("left", middlePoint, frontMask, false);
                     var shirtRight = getBlobEdge("right", middlePoint, frontMask, false);
                     drawLine(ctx, shirtLeft, shirtRight);
-                    measurements.chest = distance(shirtLeft.x, shirtLeft.y, shirtRight.x, shirtRight.y) * 2;
+                    const chest = distance(shirtLeft.x, shirtLeft.y, shirtRight.x, shirtRight.y);
+                    measurements.chest = chest;
                     
                     
                     var leftWaist = getBlobEdge("left", leftHip.position, frontMask, false);
                     var rightWaist = getBlobEdge("right", leftHip.position, frontMask, false);
                     const waist = distance(leftWaist.x, leftWaist.y, rightWaist.x, rightWaist.y);
                     drawLine(ctx, leftWaist, rightWaist);
-                    measurements.waist = waist * 2;
+                    measurements.waist = waist;
+
                     console.log(Math.abs(prevFactor - pixToCmFactor))
                     // if person is static
                     //Math.abs(prevFactor - pixToCmFactor) < 0.00001
@@ -260,8 +298,8 @@ async function predict(){
             }
 
             break;
-        case 1:
-            
+        case 2:
+            vm.instruction = "Turn right ➡, make sure you're fully facing towards your right";
             const sideSegmentation = await model.segmentPersonParts(video,{
                 flipHorizontal: false,
                 internalResolution: 'high',
@@ -272,6 +310,7 @@ async function predict(){
                 leftShoulder = sideSegmentation.allPoses[0].keypoints[5];
                 rightShoulder = sideSegmentation.allPoses[0].keypoints[6];
                 const rightHip = sideSegmentation.allPoses[0].keypoints[12];
+                leftHip = sideSegmentation.allPoses[0].keypoints[11];
                 
                 const sideMask = bodyPix.toColoredPartMask(sideSegmentation);
                 bodyPix.drawMask(canvas, video, sideMask, opacity, maskBlurAmount, flipHorizontal);
@@ -283,14 +322,16 @@ async function predict(){
 
                 const shoulderDistance = distance(leftShoulder.position.x, leftShoulder.position.y, rightShoulder.position.x, rightShoulder.position.y)
                 
-                if(getScores(sideSegmentation, 0.8) && shoulderDistance < 5){
+                if(getScores(sideSegmentation, 0.8) && shoulderDistance < 6){
                     // calculate depth
                     leftWaist = getBlobEdge("left", rightHip.position, sideMask, true);
                     rightWaist = getBlobEdge("right", rightHip.position, sideMask, true);
                     drawLine(ctx, leftWaist, rightWaist);
                     const waitDepth = distance(leftWaist.x, leftWaist.y, rightWaist.x, rightWaist.y);
                     
-                    middlePoint = new Pixel((rightShoulder.position.x + rightHip.position.x) / 2, (rightShoulder.position.y + rightHip.position.y) / 2)
+                    const shirtTop = getBlobEdge("up", leftShoulder.position, sideMask, false);
+                    const shirtBottom = new Pixel(rightHip.position.x, rightHip.position.y)
+                    middlePoint = new Pixel((shirtTop.x + shirtBottom.x) / 2, (shirtTop.y + shirtBottom.y) / 2)
                     shirtLeft = getBlobEdge("left", middlePoint, sideMask, true);
                     shirtRight = getBlobEdge("right", middlePoint, sideMask, true);
                     drawLine(ctx, shirtLeft, shirtRight);
@@ -299,7 +340,10 @@ async function predict(){
                     //Draw helpers
                     ctx.fillRect(leftWaist.x, leftWaist.y, 2, 2);
                     ctx.fillRect(rightWaist.x, rightWaist.y, 2, 2);
+                    ctx.fillRect(shirtTop.x, shirtTop.y, 4, 4);
+                    ctx.fillRect(shirtBottom.x, shirtBottom.y, 4, 4);
                     console.log(Math.abs(chestDepth - prevChestDepth));
+
                     if(Math.abs(chestDepth - prevChestDepth) < 1){
                         //take a snap
                         const snap2 = document.getElementById('snap2');
@@ -310,8 +354,8 @@ async function predict(){
                         snap2Ctx.putImageData(img,0,0);
 
                         console.log(sideSegmentation);
-                        measurements.waist += waitDepth;
-                        measurements.chest += chestDepth;
+                        measurements.waist += waitDepth*2;
+                        measurements.chest += chestDepth*2;
                         state++;
                     }
                     else 
@@ -319,14 +363,15 @@ async function predict(){
                 }
             }
             break;
-        case 2:
+        case 3:
+            vm.instruction = "Your measurements are complete!";
             console.log("Shoulder: " + measurements.shoulder + " cm ");
             console.log("Shirt Length: " + measurements.length + " cm");
             console.log("Shirt Chest: " + measurements.chest + " cm");
             console.log("Waist: " + measurements.waist + " cm");
             state++;
             break;
-        case 3:
+        case 4:
             break;
         
     }
@@ -334,172 +379,184 @@ async function predict(){
 
     // predict every frame
     setTimeout(function() {
-        predict();
+        predictF(vm);
     },33);
-}
-
-async function loadAndPredict() {
-    const frontImage = document.getElementById('image1');
-    const sideImage = document.getElementById('image2');
-    console.info('TensorFlow.js version', tf.version['tfjs']);
-    const canvas1 = document.getElementById('canvas1');
-    const canvas2 = document.getElementById('canvas2');
-    video = document.getElementById("video");
-    canvas = document.getElementById('output');
-    state = 0;
-    /*{
-        architecture: 'MobileNetV1',
-        outputStride: 16,
-        multiplier: 0.75,
-        quantBytes: 2,
-    } */
-    model = await bodyPix.load({architecture: 'MobileNetV1',
-    outputStride: 16,
-    multiplier: 0.75,
-    quantBytes: 2});
-    console.log('Model loaded');
-    if(navigator.mediaDevices.getUserMedia){
-        navigator.mediaDevices.getUserMedia({video: true, audio: false})
-            .then(function(stream){
-                video.srcObject = stream;
-            })
-            .catch(function(err){
-                console.error("Camera error: "+err);
-            })
-    }
-
-    video.onloadedmetadata = () => {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-    }
-
-    // Start Video frame segmentation and Measurment
-    video.onplay = () => {
-        video.width = canvas.width;
-        video.height = canvas.height;
-        predict(video);
-    }
-
-
-    //Test Images
-    //segment the body front
-    const frontSegementation = await model.segmentPersonParts(frontImage,{
-        flipHorizontal: false,
-        internalResolution: 'high',
-        segmentationThreshold: 0.7
-    });
-    
-    //calculate distance
-    var leftShoulder = frontSegementation.allPoses[0].keypoints[5];
-    var rightShoulder = frontSegementation.allPoses[0].keypoints[6];
-    var leftEye = frontSegementation.allPoses[0].keypoints[1];
-    var leftAnkle = frontSegementation.allPoses[0].keypoints[15];
-    var leftHip = frontSegementation.allPoses[0].keypoints[11];
-
-
-    console.log(frontSegementation);
-
-    // draw the mask
-    const frontMask = bodyPix.toColoredPartMask(frontSegementation);
-    const opacity = 0.7;
-    const flipHorizontal = false;
-    const maskBlurAmount = 0;
-    bodyPix.drawMask(canvas1, frontImage, frontMask, opacity, maskBlurAmount,flipHorizontal);
-
-    //Draw helpers
-    var ctx = canvas1.getContext('2d');
-    ctx.fillRect(leftShoulder.position.x, leftShoulder.position.y, 4, 4);
-    ctx.fillRect(rightShoulder.position.x, rightShoulder.position.y, 4, 4);
-    ctx.fillRect(leftHip.position.x, leftHip.position.y, 4, 4);
-    ctx.fillRect(leftAnkle.position.x, leftAnkle.position.y, 4, 4);
-
-
-    getPixToCm(ctx, 169, leftEye, leftAnkle, frontMask);
-
-
-    //get measurements
-    const shoulderLeft = getBlobEdge("left", leftShoulder.position, frontMask, false);
-    const shoulderRight = getBlobEdge("right", rightShoulder.position, frontMask, false);
-    drawLine(ctx, shoulderRight, shoulderLeft);
-    // measurements.shoulder = distance(leftShoulder.position.x,leftShoulder.position.y,rightShoulder.position.x,rightShoulder.position.y);
-    measurements.shoulder = distance(shoulderLeft.x, shoulderLeft.y, shoulderRight.x, shoulderRight.y);
-    
-    const shirtTop = getBlobEdge("up", leftHip.position, frontMask, false);
-    // const shirtBottom = getBlobEdge("down", leftHip.position, frontMask, false);
-    const shirtBottom = new Pixel(leftHip.position.x, leftHip.position.y);
-    drawLine(ctx, shirtTop, shirtBottom);
-    measurements.length = distance(shirtTop.x, shirtTop.y, shirtBottom.x, shirtBottom.y);
-
-    var middlePoint = new Pixel((shirtTop.x + shirtBottom.x) / 2 ,  (shirtTop.y + shirtBottom.y) / 2);
-    var shirtLeft = getBlobEdge("left", middlePoint, frontMask, false);
-    var shirtRight = getBlobEdge("right", middlePoint, frontMask, false);
-    const chest = distance(shirtLeft.x, shirtLeft.y, shirtRight.x, shirtRight.y);
-    drawLine(ctx, shirtLeft, shirtRight);
-    measurements.chest = chest;
-
-
-    var leftWaist = getBlobEdge("left", leftHip.position, frontMask, false);
-    var rightWaist = getBlobEdge("right", leftHip.position, frontMask, false);
-    drawLine(ctx, leftWaist, rightWaist);
-    const waist = distance(leftWaist.x, leftWaist.y, rightWaist.x, rightWaist.y);
-    measurements.waist = waist;
-    console.log("WAIST 1: "+ measurements.waist);
-    console.log("CHEST 1: "+ measurements.chest);
-
-    
-    const sideSegmentation = await model.segmentPersonParts(sideImage,{
-        flipHorizontal: false,
-        internalResolution: 'high',
-        segmentationThreshold: 0.7
-    });
-    
-    leftShoulder = sideSegmentation.allPoses[0].keypoints[5];
-    rightShoulder = sideSegmentation.allPoses[0].keypoints[6];
-    const rightHip = sideSegmentation.allPoses[0].keypoints[12];
-    
-    
-    const sideMask = bodyPix.toColoredPartMask(sideSegmentation);
-    bodyPix.drawMask(canvas2, sideImage, sideMask, opacity, maskBlurAmount,flipHorizontal);
-    
-    ctx = canvas2.getContext('2d');
-    ctx.fillRect(leftShoulder.position.x, leftShoulder.position.y, 4, 4);
-    ctx.fillRect(rightShoulder.position.x, rightShoulder.position.y, 4, 4);
-    ctx.fillRect(rightHip.position.x, rightHip.position.y, 4, 4);
-   
-    // calculate depth
-    leftWaist = getBlobEdge("left", rightHip.position, sideMask, true);
-    rightWaist = getBlobEdge("right", rightHip.position, sideMask, true);
-    drawLine(ctx, leftWaist, rightWaist);
-    const waistDepth = distance(leftWaist.x, leftWaist.y, rightWaist.x, rightWaist.y);
-    measurements.waist += waistDepth * 2;
-    
-    middlePoint = new Pixel((rightShoulder.position.x + rightHip.position.x) / 2, (rightShoulder.position.y + rightHip.position.y) / 2)
-    shirtLeft = getBlobEdge("left", middlePoint, sideMask, true);
-    shirtRight = getBlobEdge("right", middlePoint, sideMask, true);
-    drawLine(ctx, shirtLeft, shirtRight);
-    const chestDepth = distance(shirtRight.x, shirtRight.y, shirtLeft.x, shirtLeft.y);
-    measurements.chest += chestDepth * 2;
-    
-    ctx.fillRect(leftWaist.x, leftWaist.y, 4, 4);
-    ctx.fillRect(rightWaist.x, rightWaist.y, 4, 4);
-    
-    console.log(sideSegmentation);
-    
-    console.log("Shoulder: "+ measurements.shoulder + " cm ");
-    console.log("Shirt Length: "+ measurements.length + " cm");
-    console.log("Shirt Chest: "+ measurements.chest + " cm");
-    console.log("Waist: " + measurements.waist + " cm");
 }
 
 export default {
     name: "app",
-    data() {
+    data: function() {
         return {
-            message: "Hello world"
+            instruction: 'Enter your height',
+            height: 169,
+            measurements: measurements
         }
     },
-    mounted: function(){
-        loadAndPredict();
+    mounted: async function(){
+        const frontImage = document.getElementById('image1');
+        const sideImage = document.getElementById('image2');
+        console.info('TensorFlow.js version', tf.version['tfjs']);
+        const canvas1 = document.getElementById('canvas1');
+        const canvas2 = document.getElementById('canvas2');
+        video = document.getElementById("video");
+        canvas = document.getElementById('output');
+        state = 0;
+        /*{
+            architecture: 'MobileNetV1',
+            outputStride: 16,
+            multiplier: 0.75,
+            quantBytes: 2,
+        } */
+        model = await bodyPix.load({
+            architecture: 'MobileNetV1',
+            outputStride: 16,
+            multiplier: 0.75,
+            quantBytes: 2
+        });
+        console.log('Model loaded');
+        if(navigator.mediaDevices.getUserMedia){
+            navigator.mediaDevices.getUserMedia({video: {facingMode: { exact: "user" }}, audio: false})
+                .then(function(stream){
+                    video.srcObject = stream;
+                })
+                .catch(function(err){
+                    console.error("Camera error: "+err);
+                })
+        }
+
+        video.onloadedmetadata = () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+        }
+
+        // Start Video frame segmentation and Measurment
+        video.onplay = () => {
+            video.width = canvas.width;
+            video.height = canvas.height;
+            
+            predictF(this);
+        }
+
+
+        //Test Images
+        //segment the body front
+        const frontSegementation = await model.segmentPersonParts(frontImage,{
+            flipHorizontal: false,
+            internalResolution: 'high',
+            segmentationThreshold: 0.7
+        });
+        
+        //calculate distance
+        var leftShoulder = frontSegementation.allPoses[0].keypoints[5];
+        var rightShoulder = frontSegementation.allPoses[0].keypoints[6];
+        var leftEye = frontSegementation.allPoses[0].keypoints[1];
+        var leftAnkle = frontSegementation.allPoses[0].keypoints[15];
+        var leftHip = frontSegementation.allPoses[0].keypoints[11];
+
+
+        console.log(frontSegementation);
+
+        // draw the mask
+        const frontMask = bodyPix.toColoredPartMask(frontSegementation);
+        const opacity = 0.5;
+        const flipHorizontal = false;
+        const maskBlurAmount = 0;
+        bodyPix.drawMask(canvas1, frontImage, frontMask, opacity, maskBlurAmount,flipHorizontal);
+
+        //Draw helpers
+        var ctx = canvas1.getContext('2d');
+        ctx.fillRect(leftShoulder.position.x, leftShoulder.position.y, 4, 4);
+        ctx.fillRect(rightShoulder.position.x, rightShoulder.position.y, 4, 4);
+        ctx.fillRect(leftHip.position.x, leftHip.position.y, 4, 4);
+        ctx.fillRect(leftAnkle.position.x, leftAnkle.position.y, 4, 4);
+
+
+        getPixToCm(ctx, 169, leftEye, leftAnkle, frontMask);
+
+
+        //get measurements
+        const shoulderLeft = getBlobEdge("right", leftShoulder.position, frontMask, false);
+        const shoulderRight = getBlobEdge("left", rightShoulder.position, frontMask, false);
+        drawLine(ctx, shoulderRight, shoulderLeft);
+        // measurements.shoulder = distance(leftShoulder.position.x,leftShoulder.position.y,rightShoulder.position.x,rightShoulder.position.y);
+        measurements.shoulder = distance(shoulderLeft.x, shoulderLeft.y, shoulderRight.x, shoulderRight.y);
+        
+        var shirtTop = getBlobEdge("up", leftHip.position, frontMask, false);
+        var shirtBottom = new Pixel(leftHip.position.x, leftHip.position.y);
+        drawLine(ctx, shirtTop, shirtBottom);
+        measurements.length = distance(shirtTop.x, shirtTop.y, shirtBottom.x, shirtBottom.y);
+
+        var middlePoint = new Pixel((shirtTop.x + shirtBottom.x) / 2 ,  (shirtTop.y + shirtBottom.y) / 2);
+        var shirtLeft = getBlobEdge("left", middlePoint, frontMask, false);
+        var shirtRight = getBlobEdge("right", middlePoint, frontMask, false);
+        const chest = distance(shirtLeft.x, shirtLeft.y, shirtRight.x, shirtRight.y);
+        drawLine(ctx, shirtLeft, shirtRight);
+        measurements.chest = chest;
+
+
+        var leftWaist = getBlobEdge("left", leftHip.position, frontMask, false);
+        var rightWaist = getBlobEdge("right", leftHip.position, frontMask, false);
+        drawLine(ctx, leftWaist, rightWaist);
+        const waist = distance(leftWaist.x, leftWaist.y, rightWaist.x, rightWaist.y);
+        measurements.waist = waist;
+        console.log("WAIST 1: "+ measurements.waist);
+        console.log("CHEST 1: "+ measurements.chest);
+
+        
+        const sideSegmentation = await model.segmentPersonParts(sideImage,{
+            flipHorizontal: false,
+            internalResolution: 'high',
+            segmentationThreshold: 0.7
+        });
+        
+        leftShoulder = sideSegmentation.allPoses[0].keypoints[5];
+        rightShoulder = sideSegmentation.allPoses[0].keypoints[6];
+        const rightHip = sideSegmentation.allPoses[0].keypoints[12];
+        leftHip = sideSegmentation.allPoses[0].keypoints[11];
+        
+        const sideMask = bodyPix.toColoredPartMask(sideSegmentation);
+        bodyPix.drawMask(canvas2, sideImage, sideMask, opacity, maskBlurAmount,flipHorizontal);
+        
+        ctx = canvas2.getContext('2d');
+        ctx.fillRect(leftShoulder.position.x, leftShoulder.position.y, 4, 4);
+        ctx.fillRect(rightShoulder.position.x, rightShoulder.position.y, 4, 4);
+        ctx.fillRect(rightHip.position.x, rightHip.position.y, 4, 4);
+    
+        // calculate depth
+        leftWaist = getBlobEdge("left", rightHip.position, sideMask, true);
+        rightWaist = getBlobEdge("right", rightHip.position, sideMask, true);
+        drawLine(ctx, leftWaist, rightWaist);
+        const waistDepth = distance(leftWaist.x, leftWaist.y, rightWaist.x, rightWaist.y);
+        measurements.waist += waistDepth * 2;
+        
+        shirtTop = getBlobEdge("up", leftShoulder.position, frontMask, false);
+        shirtBottom = new Pixel(rightHip.position.x, rightHip.position.y);
+        middlePoint = new Pixel((shirtTop.x + shirtBottom.x) / 2, (shirtTop.y + shirtBottom.y) / 2);
+        shirtLeft = getBlobEdge("left", middlePoint, sideMask, true);
+        shirtRight = getBlobEdge("right", middlePoint, sideMask, true);
+        drawLine(ctx, shirtLeft, shirtRight);
+        const chestDepth = distance(shirtRight.x, shirtRight.y, shirtLeft.x, shirtLeft.y);
+        measurements.chest += chestDepth * 2;
+
+
+        ctx.fillRect(shirtTop.x, shirtTop.y, 4, 4);
+        ctx.fillRect(shirtBottom.x, shirtBottom.y, 4, 4);
+        ctx.fillRect(leftWaist.x, leftWaist.y, 4, 4);
+        ctx.fillRect(rightWaist.x, rightWaist.y, 4, 4);
+        
+        console.log(sideSegmentation);
+        
+        console.log("Shoulder: "+ measurements.shoulder + " cm ");
+        console.log("Shirt Length: "+ measurements.length + " cm");
+        console.log("Shirt Chest: "+ measurements.chest + " cm");
+        console.log("Waist: " + measurements.waist + " cm");
+    },
+    methods: {
+        submitHeight(){
+            measurements.height = this.height;
+            console.log(measurements.height);
+            state++;
+        },    
     }
 }
 </script>
