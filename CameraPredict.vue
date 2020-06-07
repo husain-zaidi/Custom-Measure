@@ -78,6 +78,11 @@ function distancePixel(x1,y1,x2,y2){
     return distance;
 }
 
+function ellipsePerimeter(width, height){
+    return 2 * Math.PI * Math.sqrt(((width ** 2) + (height ** 2)) / 2);
+}
+
+
 function isEqualArray(first, second){
     if(first.length == second.length){
         for(let i = 0; i < first.length; i++) {
@@ -131,22 +136,22 @@ function getBlobEdge(direction, origin, mask, ignoreColor){
     const originColor = getPixColor(currentX, currentY, mask);
     var currentColor = originColor;
     if(direction == "up"){
-        while((isEqualArray(originColor,currentColor)) || ignoreColor && isColoured(currentColor)){
+        while((isEqualArray(originColor,currentColor)) && isColoured(currentColor) || ignoreColor && isColoured(currentColor)){
             --currentY
             currentColor = getPixColor(currentX, currentY, mask);
         }
     }else if(direction == "down"){
-        while((isEqualArray(originColor,currentColor)) || ignoreColor && isColoured(currentColor)){
+        while((isEqualArray(originColor,currentColor)) && isColoured(currentColor) || ignoreColor && isColoured(currentColor)){
             ++currentY;
             currentColor = getPixColor(currentX, currentY, mask);
         }
     }else if(direction == "left"){
-        while((isEqualArray(originColor,currentColor)) || ignoreColor && isColoured(currentColor)){
+        while((isEqualArray(originColor,currentColor)) && isColoured(currentColor) || ignoreColor && isColoured(currentColor)){
             --currentX;
             currentColor = getPixColor(currentX, currentY, mask);
         }
     }else if(direction == "right"){
-        while((isEqualArray(originColor,currentColor)) || ignoreColor && isColoured(currentColor)){
+        while((isEqualArray(originColor,currentColor)) && isColoured(currentColor) || ignoreColor && isColoured(currentColor)){
             ++currentX;
             currentColor = getPixColor(currentX, currentY, mask);
         }
@@ -203,7 +208,7 @@ async function predictF(vm){
     const maskBlurAmount = 0;
 
     const internalResolution = 'medium';
-    const segmentationThreshold = 0.7
+    const segmentationThreshold = 0.7;
 
 
     switch(state){
@@ -217,7 +222,8 @@ async function predictF(vm){
             const frontSegementation = await model.segmentPersonParts(video,{
                 flipHorizontal: false,
                 internalResolution: internalResolution,
-                segmentationThreshold: segmentationThreshold
+                segmentationThreshold: segmentationThreshold,
+                maxDetections: 1
             });
 
             if(typeof frontSegementation.allPoses[0] !== 'undefined'){
@@ -321,7 +327,8 @@ async function predictF(vm){
             const sideSegmentation = await model.segmentPersonParts(video,{
                 flipHorizontal: false,
                 internalResolution: internalResolution,
-                segmentationThreshold: segmentationThreshold
+                segmentationThreshold: segmentationThreshold,
+                maxDetections: 1
             });
             
             if(typeof sideSegmentation.allPoses[0] !== 'undefined'){
@@ -379,6 +386,12 @@ async function predictF(vm){
                     if(Math.abs(chestDepth - prevChestDepth) < 1){
 
                         if(sampleCount < 10){
+                            // measurementsSample[sampleCount].waist = ellipsePerimeter(waistDepth, measurementsSample[sampleCount].waist);
+                            // measurementsSample[sampleCount].chest = ellipsePerimeter(chestDepth, measurementsSample[sampleCount].chest);
+                            // measurementsSample[sampleCount].mid = ellipsePerimeter(midDepth, measurementsSample[sampleCount].mid);
+                            // measurementsSample[sampleCount].bottom = ellipsePerimeter(bottomDepth, measurementsSample[sampleCount].bottom);
+                            
+
                             measurementsSample[sampleCount].waist += waistDepth * 2;
                             measurementsSample[sampleCount].chest += chestDepth * 2;
                             measurementsSample[sampleCount].mid += midDepth * 2;
@@ -409,6 +422,7 @@ async function predictF(vm){
             break;
         case 3:
             vm.instruction = "Your measurements are complete!";
+            console.log(measurementsSample);
             //average out
             var m = measurementsSample.reduce(addMeasurements, {height: 0,
                 chest: 0,

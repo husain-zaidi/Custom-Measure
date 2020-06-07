@@ -67,6 +67,12 @@ function distancePixel(x1,y1,x2,y2){
     return distance;
 }
 
+function ellipsePerimeter(width, height){
+    let h = (width - height) ** 2 / (width + height) ** 2;
+    // return 2 * Math.PI * Math.sqrt(((width ** 2) + (height ** 2)) / 2);
+    return Math.PI * (width + height) * (1 + h/4 + (h ** 2)/64 + (h ** 3)/256 + 25 * (h ** 4)/16384);
+}
+
 function isEqualArray(first, second){
     if(first.length == second.length){
         for(let i = 0; i < first.length; i++) {
@@ -119,22 +125,22 @@ function getBlobEdge(direction, origin, mask, ignoreColor){
     const originColor = getPixColor(currentX, currentY, mask);
     var currentColor = originColor;
     if(direction == "up"){
-        while((isEqualArray(originColor,currentColor)) || ignoreColor && isColoured(currentColor)){
+        while((isEqualArray(originColor,currentColor)) && isColoured(currentColor)  || ignoreColor && isColoured(currentColor)){
             --currentY
             currentColor = getPixColor(currentX, currentY, mask);
         }
     }else if(direction == "down"){
-        while((isEqualArray(originColor,currentColor)) || ignoreColor && isColoured(currentColor)){
+        while((isEqualArray(originColor,currentColor)) && isColoured(currentColor)  || ignoreColor && isColoured(currentColor)){
             ++currentY;
             currentColor = getPixColor(currentX, currentY, mask);
         }
     }else if(direction == "left"){
-        while((isEqualArray(originColor,currentColor)) || ignoreColor && isColoured(currentColor)){
+        while((isEqualArray(originColor,currentColor)) && isColoured(currentColor)  || ignoreColor && isColoured(currentColor)){
             --currentX;
             currentColor = getPixColor(currentX, currentY, mask);
         }
     }else if(direction == "right"){
-        while((isEqualArray(originColor,currentColor)) || ignoreColor && isColoured(currentColor)){
+        while((isEqualArray(originColor,currentColor)) && isColoured(currentColor)  || ignoreColor && isColoured(currentColor)){
             ++currentX;
             currentColor = getPixColor(currentX, currentY, mask);
         }
@@ -152,13 +158,14 @@ async function predict(vm){
     const canvas2 = document.getElementById('canvas2');
 
     const internalResolution = 'medium';
-    const segmentationThreshold = 0.7
+    const segmentationThreshold = 0.7;
 
     //segment the body front
     const frontSegementation = await model.segmentPersonParts(frontImage,{
         flipHorizontal: false,
         internalResolution: internalResolution,
-        segmentationThreshold: segmentationThreshold
+        segmentationThreshold: segmentationThreshold,
+        maxDetections: 1
     });
     
     //calculate distance
@@ -235,7 +242,8 @@ async function predict(vm){
     const sideSegmentation = await model.segmentPersonParts(sideImage,{
         flipHorizontal: false,
         internalResolution: internalResolution,
-        segmentationThreshold: segmentationThreshold
+        segmentationThreshold: segmentationThreshold,
+        maxDetections: 1
     });
     
     leftShoulder = sideSegmentation.allPoses[0].keypoints[5];
@@ -287,6 +295,10 @@ async function predict(vm){
     ctx.fillRect(leftWaist.x, leftWaist.y, 4, 4);
     ctx.fillRect(rightWaist.x, rightWaist.y, 4, 4);
     
+    // measurements.waist = ellipsePerimeter(measurements.waist, waistDepth);
+    // measurements.chest = ellipsePerimeter(measurements.chest, chestDepth);
+    // measurements.mid = ellipsePerimeter(measurements.mid, midDepth);
+    // measurements.bottom = ellipsePerimeter(measurements.bottom, bottomDepth);
     
     console.log("Shoulder: "+ measurements.shoulder + " cm ");
     console.log("Shirt Length: "+ measurements.length + " cm");
