@@ -5,7 +5,8 @@
 
         </v-app-bar>
         <v-content>
-            <v-tabs >
+            <v-container>
+            <v-tabs>
                 <v-tab>App</v-tab>
                 <v-tab>Upload Data</v-tab>
                 <v-tab-item>
@@ -15,7 +16,7 @@
                     <app-upload></app-upload>
                 </v-tab-item>
             </v-tabs>
-            
+            </v-container>
            
         </v-content>
         

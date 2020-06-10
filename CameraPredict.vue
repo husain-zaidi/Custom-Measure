@@ -1,10 +1,13 @@
 <template>
-<v-container class="fill-height" >
-        <v-container>
+<v-container >
+    
+        <!-- <v-container> -->
             <video autoplay="true" id="video"></video>
+            <canvas id="buffer"></canvas>
             <v-card class="d-flex justify-center align-center flex-column">
                 <p class="my-5">{{instruction}}</p>
                 <canvas  id="output"></canvas>
+            
                 <v-text-field 
                     label="height"
                     type="number" 
@@ -15,23 +18,25 @@
                     append-outer-icon="mdi-chevron-right-box" 
                     @click:append-outer="submitHeight">
                 </v-text-field>
+                
             </v-card>   
-            <v-card class="d-flex justify-center align-center flex-column">
-<pre>
-Shoulder Length: {{measurements.shoulder}} cm
-Shirt Length:    {{measurements.length}} cm
-Chest:           {{measurements.chest}} cm
-Mid:             {{measurements.mid}} cm
-Bottom:          {{measurements.bottom}} cm
-Waist:           {{measurements.waist}} cm
-</pre>
+            <v-card class="d-flex justify-center align-center flex-column" >
+            <p class="body-1">
+            Shoulder Length: {{measurements.shoulder}} cm <br/>
+            Shirt Length:    {{measurements.length}} cm <br/>
+            Chest:           {{measurements.chest}} cm <br/>
+            Mid:             {{measurements.mid}} cm <br/>
+            Bottom:          {{measurements.bottom}} cm <br/>
+            Waist:           {{measurements.waist}} cm <br/>
+            </p>
             
             </v-card>
-        </v-container>
-        <v-container fluid>
+        <!-- </v-container> -->
+        <!-- <v-container fluid> -->
             <canvas id="snap1"></canvas>
             <canvas id="snap2"></canvas>
-        </v-container>
+        <!-- </v-container> -->
+        
 </v-container>
 </template>
 
@@ -50,6 +55,7 @@ var pixToCmFactor = 0;
 var video;
 var model; 
 var canvas;
+var buffer;
 var state;
 var prevFactor = 0;
 var prevChestDepth = 0;
@@ -93,6 +99,54 @@ function isEqualArray(first, second){
         return true;
     }
     return false;
+}
+
+function sharpen(ctx, w, h, mix) {
+    var x, sx, sy, r, g, b, a, dstOff, srcOff, wt, cx, cy, scy, scx,
+        weights = [0, -1, 0, -1, 5, -1, 0, -1, 0],
+        katet = Math.round(Math.sqrt(weights.length)),
+        half = (katet * 0.5) | 0,
+        dstData = ctx.createImageData(w, h),
+        dstBuff = dstData.data,
+        srcBuff = ctx.getImageData(0, 0, w, h).data,
+        y = h;
+
+    while (y--) {
+        x = w;
+        while (x--) {
+            sy = y;
+            sx = x;
+            dstOff = (y * w + x) * 4;
+            r = 0;
+            g = 0;
+            b = 0;
+            a = 0;
+
+            for (cy = 0; cy < katet; cy++) {
+                for (cx = 0; cx < katet; cx++) {
+                    scy = sy + cy - half;
+                    scx = sx + cx - half;
+
+                    if (scy >= 0 && scy < h && scx >= 0 && scx < w) {
+                        srcOff = (scy * w + scx) * 4;
+                        wt = weights[cy * katet + cx];
+
+                        r += srcBuff[srcOff] * wt;
+                        g += srcBuff[srcOff + 1] * wt;
+                        b += srcBuff[srcOff + 2] * wt;
+                        a += srcBuff[srcOff + 3] * wt;
+                    }
+                }
+            }
+
+            dstBuff[dstOff] = r * mix + srcBuff[dstOff] * (1 - mix);
+            dstBuff[dstOff + 1] = g * mix + srcBuff[dstOff + 1] * (1 - mix);
+            dstBuff[dstOff + 2] = b * mix + srcBuff[dstOff + 2] * (1 - mix);
+            dstBuff[dstOff + 3] = srcBuff[dstOff + 3];
+        }
+    }
+
+    ctx.putImageData(dstData, 0, 0);
 }
 
 function getPixToCm(ctx,  height, leftEye, leftAnkle, mask){
@@ -203,11 +257,12 @@ async function predictF(vm){
     var leftAnkle;
     var leftHip;
     var leftElbow;
+    var ctx;
     const opacity = 0.5;
     const flipHorizontal = false;
     const maskBlurAmount = 0;
 
-    const internalResolution = 'medium';
+    const internalResolution = 'high';
     const segmentationThreshold = 0.7;
 
 
@@ -217,9 +272,15 @@ async function predictF(vm){
             break;
         case 1:
             vm.instruction = "Stand Straight and stay still, Make sure your full length is in view of camera";
+            
+            ctx = buffer.getContext('2d');
+            ctx.drawImage(video,0,0);
+
+            sharpen(ctx, buffer.width, buffer.height, 0.9);
+
             // person segment that shit and draw
             //front measurement
-            const frontSegementation = await model.segmentPersonParts(video,{
+            const frontSegementation = await model.segmentPersonParts(buffer,{
                 flipHorizontal: false,
                 internalResolution: internalResolution,
                 segmentationThreshold: segmentationThreshold,
@@ -238,10 +299,10 @@ async function predictF(vm){
             
                 // draw the mask
                 const frontMask = bodyPix.toColoredPartMask(frontSegementation);
-                bodyPix.drawMask(canvas, video, frontMask, opacity, maskBlurAmount, flipHorizontal);
+                bodyPix.drawMask(canvas, buffer, frontMask, opacity, maskBlurAmount, flipHorizontal);
             
                 //Draw helpers
-                var ctx = canvas.getContext('2d');
+                ctx = canvas.getContext('2d');
                 ctx.fillRect(leftShoulder.position.x, leftShoulder.position.y, 4, 4);
                 ctx.fillRect(rightShoulder.position.x, rightShoulder.position.y, 4, 4);
                 ctx.fillRect(leftHip.position.x, leftHip.position.y, 4, 4);
@@ -250,6 +311,7 @@ async function predictF(vm){
 
                 // calculate measurements if score is more that 75% and increment state
                 if(getScores(frontSegementation, 0.9)){
+                    vm.instruction = "Stand Still, Measuring";
                     getPixToCm(ctx, measurements.height, leftEye, leftAnkle, frontMask);
                     //get measurements
                     const shoulderLeft = getBlobEdge("right", leftShoulder.position, frontMask, false);
@@ -324,7 +386,13 @@ async function predictF(vm){
             break;
         case 2:
             vm.instruction = "Turn right ➡, make sure you're fully facing towards your right";
-            const sideSegmentation = await model.segmentPersonParts(video,{
+
+            ctx = buffer.getContext('2d');
+            ctx.drawImage(video,0,0);
+
+            sharpen(ctx, buffer.width, buffer.height, 0.9);
+
+            const sideSegmentation = await model.segmentPersonParts(buffer,{
                 flipHorizontal: false,
                 internalResolution: internalResolution,
                 segmentationThreshold: segmentationThreshold,
@@ -338,7 +406,7 @@ async function predictF(vm){
                 leftHip = sideSegmentation.allPoses[0].keypoints[11];
                 
                 const sideMask = bodyPix.toColoredPartMask(sideSegmentation);
-                bodyPix.drawMask(canvas, video, sideMask, opacity, maskBlurAmount, flipHorizontal);
+                bodyPix.drawMask(canvas, buffer, sideMask, opacity, maskBlurAmount, flipHorizontal);
                 
                 var ctx = canvas.getContext('2d');
                 ctx.fillRect(leftShoulder.position.x, leftShoulder.position.y, 2, 2);
@@ -348,6 +416,7 @@ async function predictF(vm){
                 const shoulderDistance = distance(leftShoulder.position.x, leftShoulder.position.y, rightShoulder.position.x, rightShoulder.position.y)
                 
                 if(getScores(sideSegmentation, 0.8) && shoulderDistance < 6){
+                    vm.instruction = "Stand Still, Measuring";
                     // calculate depth
                     leftWaist = getBlobEdge("left", rightHip.position, sideMask, true);
                     rightWaist = getBlobEdge("right", rightHip.position, sideMask, true);
@@ -384,7 +453,6 @@ async function predictF(vm){
                     ctx.fillRect(shirtBottom.x, shirtBottom.y, 4, 4);
 
                     if(Math.abs(chestDepth - prevChestDepth) < 1){
-
                         if(sampleCount < 10){
                             // measurementsSample[sampleCount].waist = ellipsePerimeter(waistDepth, measurementsSample[sampleCount].waist);
                             // measurementsSample[sampleCount].chest = ellipsePerimeter(chestDepth, measurementsSample[sampleCount].chest);
@@ -475,6 +543,8 @@ export default {
         console.log(tf.getBackend());
         video = document.getElementById("video");
         canvas = document.getElementById('output');
+        buffer = document.getElementById("buffer");
+            
         state = 0;
         /*{
             architecture: 'ResNet50',
@@ -496,6 +566,8 @@ export default {
         video.onloadedmetadata = () => {
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
+            buffer.width = video.videoWidth;
+            buffer.height = video.videoHeight;
         }
 
         // Start Video frame segmentation and Measurment
@@ -520,6 +592,9 @@ export default {
 
 <style>
 #video{
+    display: none;
+}
+#buffer{
     display: none;
 }
 </style>
