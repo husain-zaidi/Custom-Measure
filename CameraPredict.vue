@@ -4,31 +4,79 @@
         <!-- <v-container> -->
             <video autoplay="true" id="video"></video>
             <canvas id="buffer"></canvas>
+            <!-- "d-flex justify-center align-center flex-column" -->
             <v-card class="d-flex justify-center align-center flex-column">
                 <p class="my-5">{{instruction}}</p>
-                <canvas  id="output"></canvas>
-            
-                <v-text-field 
-                    label="height"
-                    type="number" 
-                    v-model="height"
-                    dense
-                    outlined 
-                    class="my-5"
-                    append-outer-icon="mdi-chevron-right-box" 
-                    @click:append-outer="submitHeight">
-                </v-text-field>
                 
+                <canvas  id="output"></canvas>
+                 <v-progress-circular
+                        v-if="loading"
+                        indeterminate
+                        color="primary"
+                ></v-progress-circular>
             </v-card>   
+            <v-card>
+                <v-row align="center">
+                    <v-col class="d-flex" cols="12" sm="6"> 
+                        <v-text-field 
+                            label="height"
+                            type="number" 
+                            v-model="height"
+                            dense
+                            outlined 
+                            class="my-5"
+                        ></v-text-field>
+                    </v-col>
+                    <v-col class="d-flex" cols="12" sm="6"> 
+                        <v-select
+                            :items="units"
+                            label="Unit"
+                            :value="unit"
+                            solo
+                            append-outer-icon="mdi-chevron-right-box"
+                            @change="changeUnit"
+                             @click:append-outer="submitHeight"
+                        ></v-select>
+                    </v-col>
+                </v-row>
+            </v-card>
             <v-card class="d-flex justify-center align-center flex-column" >
-            <p class="body-1">
-            Shoulder Length:    {{measurements.shoulder}} cm <br/>
-            Shirt Length:    {{measurements.length}} cm <br/>
-            Chest:    {{measurements.chest}} cm <br/>
-            Mid:    {{measurements.mid}} cm <br/>
-            Bottom:    {{measurements.bottom}} cm <br/>
-            Waist:    {{measurements.waist}} cm <br/>
-            </p>
+            <!-- <p class="body-1">
+                Measurements (In {{unit}}) <br/>
+            Shoulder Length:    {{measurements.shoulder.toFixed(2)}} <br/>
+            Shirt Length:    {{measurements.length.toFixed(2)}} <br/>
+            Chest:    {{measurements.chest.toFixed(2)}} <br/>
+            Mid:    {{measurements.mid.toFixed(2)}} <br/>
+            Bottom:    {{measurements.bottom.toFixed(2)}} <br/>
+            Waist:    {{measurements.waist.toFixed(2)}} <br/>
+            </p> -->
+            <p>Measurements (In {{unit}})</p>
+            <table style="width:50%">
+                <tr>
+                    <td>Shoulder Length: </td>
+                    <td>{{measurements.shoulder.toFixed(2)}}</td>
+                </tr>
+                 <tr>
+                    <td>Shirt Length: </td>
+                    <td>{{measurements.length.toFixed(2)}}</td>
+                </tr>
+                 <tr>
+                    <td>Chest: </td>
+                    <td>{{measurements.chest.toFixed(2)}}</td>
+                </tr>
+                 <tr>
+                    <td>Mid: </td>
+                    <td>{{measurements.mid.toFixed(2)}}</td>
+                </tr>
+                 <tr>
+                    <td>Bottom: </td>
+                    <td>{{measurements.bottom.toFixed(2)}}</td>
+                </tr>
+                 <tr>
+                    <td>Waist: </td>
+                    <td>{{measurements.waist.toFixed(2)}}</td>
+                </tr>
+            </table>
             
             </v-card>
         <!-- </v-container> -->
@@ -68,7 +116,9 @@ var measurements = {
     shoulder: 0,
     length: 0,
     waist: 0,
-    jeansLength: 0
+    trouser: 0,
+    collar: 0,
+    sleeve: 0,
 };
 
 var measurementsSample = [];
@@ -329,6 +379,7 @@ async function predictF(vm){
                 // calculate measurements if score is more that 75% and increment state
                 if(getScores(frontSegementation, 0.9)){
                     vm.instruction = "Stand Still, Measuring";
+                    vm.loading = true;
                     getPixToCm(ctx, measurements.height, leftEye, leftAnkle, frontMask);
                     //get measurements
                     const shoulderLeft = getBlobEdge("right", leftShoulder.position, frontMask, false);
@@ -383,6 +434,7 @@ async function predictF(vm){
                             measurementsSample.push(Object.assign({},measurements));
                         }else{
                             //take a snap
+                            vm.loading = false;
                             const snap1 = document.getElementById('snap1');
                             snap1.width = canvas.width;
                             snap1.height = canvas.height;
@@ -439,6 +491,7 @@ async function predictF(vm){
                 
                 if(getScores(sideSegmentation, 0.7) && shoulderDistance < 6){
                     vm.instruction = "Stand Still, Measuring";
+                    vm.loading = true;
                     // calculate depth
                     leftWaist = getBlobEdge("left", rightHip.position, sideMask, true);
                     rightWaist = getBlobEdge("right", rightHip.position, sideMask, true);
@@ -489,14 +542,14 @@ async function predictF(vm){
                             measurementsSample[sampleCount].bottom += bottomDepth * 2;
                             sampleCount++;
                         }else {
-
+                            vm.loading = false;
                             //take a snap
                             const snap2 = document.getElementById('snap2');
                             snap2.width = canvas.width;
                             snap2.height = canvas.height;
                             const snap2Ctx = snap2.getContext('2d');
-                            const img = ctx.getImageData(0,0,canvas.width, canvas.height);
-                            snap2Ctx.putImageData(img,0,0);
+                            const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                            snap2Ctx.putImageData(img, 0, 0);
                             console.log(measurementsSample);
                             // console.log(sideSegmentation);
                             // measurements.waist += waistDepth * 2;
@@ -522,7 +575,9 @@ async function predictF(vm){
                 shoulder: 0,
                 length: 0,
                 waist: 0,
-                jeansLength: 0});
+                trouser: 0,
+                collar: 0,
+                sleeve: 0,});
             
             console.log(m);
             measurements.shoulder = m.shoulder / measurementsSample.length;
@@ -558,7 +613,10 @@ export default {
         return {
             instruction: 'Enter your height',
             height: 169,
-            measurements: measurements
+            measurements: measurements,
+            units: ['Inches','Centimeters'],
+            unit: 'Centimeters',
+            loading: true,
         }
     },
     mounted: async function(){
@@ -597,16 +655,19 @@ export default {
         video.onplay = () => {
             video.width = canvas.width;
             video.height = canvas.height;
-            
+            this.loading = false;
             predictF(this);
         }
     },
     methods: {
-        submitHeight(){
+        submitHeight(e){
             measurements.height = this.height;
-            console.log(measurements.height);
+            console.log(this.unit);
             state++;
         },    
+        changeUnit(e){
+            this.unit = e;
+        }
     },
     
 }
@@ -619,5 +680,8 @@ export default {
 }
 #buffer{
     display: none;
+}
+td {
+    text-align: center;
 }
 </style>
