@@ -68,7 +68,7 @@ function distancePixel(x1,y1,x2,y2){
 }
 
 function ellipsePerimeter(width, height){
-    let h = (width - height) ** 2 / (width + height) ** 2;
+    let h = ((width - height) ** 2) / ((width + height) ** 2);
     // return 2 * Math.PI * Math.sqrt(((width ** 2) + (height ** 2)) / 2);
     return Math.PI * (width + height) * (1 + h/4 + (h ** 2)/64 + (h ** 3)/256 + 25 * (h ** 4)/16384);
 }
@@ -98,7 +98,8 @@ function getPixToCm(ctx,  height, leftEye, leftAnkle, mask){
     //console.log("Height and factor " + pixHeight + " , " + pixToCmFactor);
 }
 
-function drawLine(ctx, start, end){
+function drawLine(ctx, start, end, color){
+    ctx.strokeStyle = color;
     ctx.beginPath();
     ctx.moveTo(start.x,start.y);
     ctx.lineTo(end.x,end.y);
@@ -149,19 +150,76 @@ function getBlobEdge(direction, origin, mask, ignoreColor){
     return new Pixel(currentX,currentY);
 }
 
+function sharpen(ctx, w, h, mix) {
+    var x, sx, sy, r, g, b, a, dstOff, srcOff, wt, cx, cy, scy, scx,
+        weights = [0, -1, 0, -1, 5, -1, 0, -1, 0],
+        katet = Math.round(Math.sqrt(weights.length)),
+        half = (katet * 0.5) | 0,
+        dstData = ctx.createImageData(w, h),
+        dstBuff = dstData.data,
+        srcBuff = ctx.getImageData(0, 0, w, h).data,
+        y = h;
+
+    while (y--) {
+        x = w;
+        while (x--) {
+            sy = y;
+            sx = x;
+            dstOff = (y * w + x) * 4;
+            r = 0;
+            g = 0;
+            b = 0;
+            a = 0;
+
+            for (cy = 0; cy < katet; cy++) {
+                for (cx = 0; cx < katet; cx++) {
+                    scy = sy + cy - half;
+                    scx = sx + cx - half;
+
+                    if (scy >= 0 && scy < h && scx >= 0 && scx < w) {
+                        srcOff = (scy * w + scx) * 4;
+                        wt = weights[cy * katet + cx];
+
+                        r += srcBuff[srcOff] * wt;
+                        g += srcBuff[srcOff + 1] * wt;
+                        b += srcBuff[srcOff + 2] * wt;
+                        a += srcBuff[srcOff + 3] * wt;
+                    }
+                }
+            }
+
+            dstBuff[dstOff] = r * mix + srcBuff[dstOff] * (1 - mix);
+            dstBuff[dstOff + 1] = g * mix + srcBuff[dstOff + 1] * (1 - mix);
+            dstBuff[dstOff + 2] = b * mix + srcBuff[dstOff + 2] * (1 - mix);
+            dstBuff[dstOff + 3] = srcBuff[dstOff + 3];
+        }
+    }
+
+    ctx.putImageData(dstData, 0, 0);
+}
+
 async function predict(vm){
     //Test Images
     const frontImage = document.getElementById('image1');
     const sideImage = document.getElementById('image2');
     
     const canvas1 = document.getElementById('canvas1');
+    canvas1.width = frontImage.width;
+    canvas1.height = frontImage.height;
     const canvas2 = document.getElementById('canvas2');
+    canvas2.width = sideImage.width;
+    canvas2.height = sideImage.height;
 
-    const internalResolution = 'medium';
+    const internalResolution = 'low';
     const segmentationThreshold = 0.7;
 
+
+    var ctx = canvas1.getContext('2d');
+    ctx.drawImage(frontImage,0,0);
+    sharpen(ctx, frontImage.width, frontImage.height, 0.9);
+
     //segment the body front
-    const frontSegementation = await model.segmentPersonParts(frontImage,{
+    const frontSegementation = await model.segmentPersonParts(canvas1,{
         flipHorizontal: false,
         internalResolution: internalResolution,
         segmentationThreshold: segmentationThreshold,
@@ -234,12 +292,21 @@ async function predict(vm){
     drawLine(ctx, leftWaist, rightWaist);
     const waist = distance(leftWaist.x, leftWaist.y, rightWaist.x, rightWaist.y);
     measurements.waist = waist ;
+
+
+    ctx.fillRect(leftWaist.x, leftWaist.y, 2, 2);
+    ctx.fillRect(rightWaist.x, rightWaist.y, 2, 2);
+    ctx.fillRect(shirtTop.x, shirtTop.y, 4, 4);
+    ctx.fillRect(shirtBottom.x, shirtBottom.y, 4, 4);
     
     console.log("WAIST 1: "+ measurements.waist);
     console.log("CHEST 1: "+ measurements.chest);
 
+    var ctx = canvas2.getContext('2d');
+    ctx.drawImage(sideImage,0,0);
+    sharpen(ctx, frontImage.width, sideImage.height, 0.9);
     
-    const sideSegmentation = await model.segmentPersonParts(sideImage,{
+    const sideSegmentation = await model.segmentPersonParts(canvas2,{
         flipHorizontal: false,
         internalResolution: internalResolution,
         segmentationThreshold: segmentationThreshold,
@@ -260,13 +327,12 @@ async function predict(vm){
     ctx.fillRect(rightHip.position.x, rightHip.position.y, 4, 4);
 
     // calculate depth
-    leftWaist = getBlobEdge("left", rightHip.position, sideMask, true);
+     leftWaist = getBlobEdge("left", rightHip.position, sideMask, true);
     rightWaist = getBlobEdge("right", rightHip.position, sideMask, true);
-    drawLine(ctx, leftWaist, rightWaist);
+    drawLine(ctx, leftWaist, rightWaist, 'black');
     const waistDepth = distance(leftWaist.x, leftWaist.y, rightWaist.x, rightWaist.y);
-    measurements.waist += waistDepth * 2;
     
-    shirtTop = getBlobEdge("up", leftShoulder.position, sideMask, false);
+    shirtTop = getBlobEdge("up", rightShoulder.position, sideMask, false);
     shirtBottom = new Pixel(rightHip.position.x, rightHip.position.y);
 
 
@@ -274,22 +340,21 @@ async function predict(vm){
     var shirtLeft = getBlobEdge("left", chestPoint, sideMask, true);
     var shirtRight = getBlobEdge("right", chestPoint, sideMask, true);
     const chestDepth = distance(shirtLeft.x, shirtLeft.y, shirtRight.x, shirtRight.y);
-    drawLine(ctx, shirtLeft, shirtRight);
-    measurements.chest += chestDepth * 2;
+    drawLine(ctx, shirtLeft, shirtRight, 'green');
 
     var midPoint = new Pixel((shirtTop.x + shirtBottom.x) / 2 ,  (shirtTop.y + shirtBottom.y) / 2);
     var shirtLeft = getBlobEdge("left", midPoint, sideMask, true);
     var shirtRight = getBlobEdge("right", midPoint, sideMask, true);
     const midDepth = distance(shirtLeft.x, shirtLeft.y, shirtRight.x, shirtRight.y);
-    drawLine(ctx, shirtLeft, shirtRight);
-    measurements.mid += midDepth * 2;
+    drawLine(ctx, shirtLeft, shirtRight, 'black');
+    
 
     var bottomPoint = new Pixel((shirtTop.x + 2*shirtBottom.x) / 3 ,  (shirtTop.y + 2*shirtBottom.y) / 3);
     var shirtLeft = getBlobEdge("left", bottomPoint, sideMask, true);
     var shirtRight = getBlobEdge("right", bottomPoint, sideMask, true);
     const bottomDepth = distance(shirtLeft.x, shirtLeft.y, shirtRight.x, shirtRight.y);
-    drawLine(ctx, shirtLeft, shirtRight);
-    measurements.bottom += bottomDepth * 2;
+    drawLine(ctx, shirtLeft, shirtRight, 'blue');
+
 
     ctx.fillRect(shirtTop.x, shirtTop.y, 6, 6);
     ctx.fillRect(leftWaist.x, leftWaist.y, 4, 4);
@@ -299,6 +364,10 @@ async function predict(vm){
     // measurements.chest = ellipsePerimeter(measurements.chest, chestDepth);
     // measurements.mid = ellipsePerimeter(measurements.mid, midDepth);
     // measurements.bottom = ellipsePerimeter(measurements.bottom, bottomDepth);
+    measurements.waist += waistDepth * 2;
+    measurements.chest += chestDepth * 2;
+    measurements.mid += midDepth * 2; 
+    measurements.bottom += bottomDepth * 2;
     
     console.log("Shoulder: "+ measurements.shoulder + " cm ");
     console.log("Shirt Length: "+ measurements.length + " cm");

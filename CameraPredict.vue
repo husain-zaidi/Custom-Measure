@@ -22,12 +22,12 @@
             </v-card>   
             <v-card class="d-flex justify-center align-center flex-column" >
             <p class="body-1">
-            Shoulder Length: {{measurements.shoulder}} cm <br/>
+            Shoulder Length:    {{measurements.shoulder}} cm <br/>
             Shirt Length:    {{measurements.length}} cm <br/>
-            Chest:           {{measurements.chest}} cm <br/>
-            Mid:             {{measurements.mid}} cm <br/>
-            Bottom:          {{measurements.bottom}} cm <br/>
-            Waist:           {{measurements.waist}} cm <br/>
+            Chest:    {{measurements.chest}} cm <br/>
+            Mid:    {{measurements.mid}} cm <br/>
+            Bottom:    {{measurements.bottom}} cm <br/>
+            Waist:    {{measurements.waist}} cm <br/>
             </p>
             
             </v-card>
@@ -77,6 +77,18 @@ var sampleCount = 0;
 function distance(x1,y1,x2,y2){
     const distance = Math.sqrt(((x2-x1) ** 2) + ((y2-y1) ** 2));
     return distance * pixToCmFactor;
+}
+
+function isAndroid() {
+  return /Android/i.test(navigator.userAgent);
+}
+
+function isiOS() {
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+export function isMobile() {
+  return isAndroid() || isiOS();
 }
 
 function distancePixel(x1,y1,x2,y2){
@@ -156,13 +168,14 @@ function getPixToCm(ctx,  height, leftEye, leftAnkle, mask){
     const heel = getBlobEdge("left", {x: leftAnkle.position.x, y: leftAnkle.position.y }, mask, false);
     // const heel = new Pixel(leftAnkle.position.x, leftAnkle.position.y);
     const pixHeight = distancePixel(top.x, top.y, heel.x, heel.y);
-    drawLine(ctx,top,heel);
+    drawLine(ctx,top,heel,'black');
 
     pixToCmFactor = height / pixHeight;
     //console.log("Height and factor " + pixHeight + " , " + pixToCmFactor);
 }
 
-function drawLine(ctx, start, end){
+function drawLine(ctx, start, end, color){
+    ctx.strokeStyle = color;
     ctx.beginPath();
     ctx.moveTo(start.x,start.y);
     ctx.lineTo(end.x,end.y);
@@ -262,8 +275,12 @@ async function predictF(vm){
     const flipHorizontal = false;
     const maskBlurAmount = 0;
 
-    const internalResolution = 'high';
-    const segmentationThreshold = 0.7;
+    var internalResolution = 'high';
+    var segmentationThreshold = 0.7;
+
+    if(isMobile()){
+        internalResolution = 'medium';
+    }
 
 
     switch(state){
@@ -274,7 +291,7 @@ async function predictF(vm){
             vm.instruction = "Stand Straight and stay still, Make sure your full length is in view of camera";
             
             ctx = buffer.getContext('2d');
-            ctx.drawImage(video,0,0);
+            ctx.drawImage(video, 0, 0);
 
             sharpen(ctx, buffer.width, buffer.height, 0.9);
 
@@ -321,43 +338,48 @@ async function predictF(vm){
                     
                     var shirtTop = getBlobEdge("up", leftHip.position, frontMask, false);
                     var shirtBottom = new Pixel(leftHip.position.x, leftHip.position.y);
-                    drawLine(ctx, shirtTop, shirtBottom);
+                    drawLine(ctx, shirtTop, shirtBottom, 'black');
                     measurements.length = distance(shirtTop.x, shirtTop.y, shirtBottom.x, shirtBottom.y);
 
                     var chestPoint = new Pixel((2*shirtTop.x + shirtBottom.x) / 3 ,  (2*shirtTop.y + shirtBottom.y) / 3);
                     var shirtLeft = getBlobEdge("left", chestPoint, frontMask, false);
                     var shirtRight = getBlobEdge("right", chestPoint, frontMask, false);
                     const chest = distance(shirtLeft.x, shirtLeft.y, shirtRight.x, shirtRight.y);
-                    drawLine(ctx, shirtLeft, shirtRight);
+                    drawLine(ctx, shirtLeft, shirtRight, 'green');
                     measurements.chest = chest ;
 
                     var midPoint = new Pixel((shirtTop.x + shirtBottom.x) / 2 ,  (shirtTop.y + shirtBottom.y) / 2);
                     var shirtLeft = getBlobEdge("left", midPoint, frontMask, false);
                     var shirtRight = getBlobEdge("right", midPoint, frontMask, false);
                     const mid = distance(shirtLeft.x, shirtLeft.y, shirtRight.x, shirtRight.y);
-                    drawLine(ctx, shirtLeft, shirtRight);
+                    drawLine(ctx, shirtLeft, shirtRight, 'black');
                     measurements.mid = mid ;
 
                     var bottomPoint = new Pixel((shirtTop.x + 2*shirtBottom.x) / 3 ,  (shirtTop.y + 2*shirtBottom.y) / 3);
                     var shirtLeft = getBlobEdge("left", bottomPoint, frontMask, false);
                     var shirtRight = getBlobEdge("right", bottomPoint, frontMask, false);
                     const bottom = distance(shirtLeft.x, shirtLeft.y, shirtRight.x, shirtRight.y);
-                    drawLine(ctx, shirtLeft, shirtRight);
+                    drawLine(ctx, shirtLeft, shirtRight, 'blue');
                     measurements.bottom = bottom ;
 
 
                     var leftWaist = getBlobEdge("left", leftHip.position, frontMask, false);
                     var rightWaist = getBlobEdge("right", leftHip.position, frontMask, false);
-                    drawLine(ctx, leftWaist, rightWaist);
+                    drawLine(ctx, leftWaist, rightWaist, 'black');
                     const waist = distance(leftWaist.x, leftWaist.y, rightWaist.x, rightWaist.y);
                     measurements.waist = waist ;
                     
+                    ctx.fillRect(leftWaist.x, leftWaist.y, 2, 2);
+                    ctx.fillRect(rightWaist.x, rightWaist.y, 2, 2);
+                    ctx.fillRect(shirtTop.x, shirtTop.y, 4, 4);
+                    ctx.fillRect(shirtBottom.x, shirtBottom.y, 4, 4);
 
                     // if person is static
                     //Math.abs(prevFactor - pixToCmFactor) < 0.00001
-                    if(Math.abs(prevFactor - pixToCmFactor) < 0.001){
+                    if(Math.abs(prevFactor - pixToCmFactor) < 0.01){
                         //record 30 measurements
                         if(measurementsSample.length < 10){
+                            console.log(chest + " " + waist + " "+ mid + " "+ bottom);
                             measurementsSample.push(Object.assign({},measurements));
                         }else{
                             //take a snap
@@ -388,7 +410,7 @@ async function predictF(vm){
             vm.instruction = "Turn right ➡, make sure you're fully facing towards your right";
 
             ctx = buffer.getContext('2d');
-            ctx.drawImage(video,0,0);
+            ctx.drawImage(video, 0, 0);
 
             sharpen(ctx, buffer.width, buffer.height, 0.9);
 
@@ -415,15 +437,15 @@ async function predictF(vm){
 
                 const shoulderDistance = distance(leftShoulder.position.x, leftShoulder.position.y, rightShoulder.position.x, rightShoulder.position.y)
                 
-                if(getScores(sideSegmentation, 0.8) && shoulderDistance < 6){
+                if(getScores(sideSegmentation, 0.7) && shoulderDistance < 6){
                     vm.instruction = "Stand Still, Measuring";
                     // calculate depth
                     leftWaist = getBlobEdge("left", rightHip.position, sideMask, true);
                     rightWaist = getBlobEdge("right", rightHip.position, sideMask, true);
-                    drawLine(ctx, leftWaist, rightWaist);
+                    drawLine(ctx, leftWaist, rightWaist, 'black');
                     const waistDepth = distance(leftWaist.x, leftWaist.y, rightWaist.x, rightWaist.y);
                     
-                    shirtTop = getBlobEdge("up", leftShoulder.position, sideMask, false);
+                    shirtTop = getBlobEdge("up", rightShoulder.position, sideMask, false);
                     shirtBottom = new Pixel(rightHip.position.x, rightHip.position.y);
 
 
@@ -431,20 +453,20 @@ async function predictF(vm){
                     var shirtLeft = getBlobEdge("left", chestPoint, sideMask, true);
                     var shirtRight = getBlobEdge("right", chestPoint, sideMask, true);
                     const chestDepth = distance(shirtLeft.x, shirtLeft.y, shirtRight.x, shirtRight.y);
-                    drawLine(ctx, shirtLeft, shirtRight);
+                    drawLine(ctx, shirtLeft, shirtRight, 'green');
 
                     var midPoint = new Pixel((shirtTop.x + shirtBottom.x) / 2 ,  (shirtTop.y + shirtBottom.y) / 2);
                     var shirtLeft = getBlobEdge("left", midPoint, sideMask, true);
                     var shirtRight = getBlobEdge("right", midPoint, sideMask, true);
                     const midDepth = distance(shirtLeft.x, shirtLeft.y, shirtRight.x, shirtRight.y);
-                    drawLine(ctx, shirtLeft, shirtRight);
+                    drawLine(ctx, shirtLeft, shirtRight, 'black');
                     
 
                     var bottomPoint = new Pixel((shirtTop.x + 2*shirtBottom.x) / 3 ,  (shirtTop.y + 2*shirtBottom.y) / 3);
                     var shirtLeft = getBlobEdge("left", bottomPoint, sideMask, true);
                     var shirtRight = getBlobEdge("right", bottomPoint, sideMask, true);
                     const bottomDepth = distance(shirtLeft.x, shirtLeft.y, shirtRight.x, shirtRight.y);
-                    drawLine(ctx, shirtLeft, shirtRight);
+                    drawLine(ctx, shirtLeft, shirtRight, 'blue');
 
                     //Draw helpers
                     ctx.fillRect(leftWaist.x, leftWaist.y, 2, 2);
@@ -459,6 +481,7 @@ async function predictF(vm){
                             // measurementsSample[sampleCount].mid = ellipsePerimeter(midDepth, measurementsSample[sampleCount].mid);
                             // measurementsSample[sampleCount].bottom = ellipsePerimeter(bottomDepth, measurementsSample[sampleCount].bottom);
                             
+                            console.log(chestDepth + " " +waistDepth + " " +  midDepth + " " + bottomDepth);
 
                             measurementsSample[sampleCount].waist += waistDepth * 2;
                             measurementsSample[sampleCount].chest += chestDepth * 2;
