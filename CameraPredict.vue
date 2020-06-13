@@ -41,15 +41,7 @@
                 </v-row>
             </v-card>
             <v-card class="d-flex justify-center align-center flex-column" >
-            <!-- <p class="body-1">
-                Measurements (In {{unit}}) <br/>
-            Shoulder Length:    {{measurements.shoulder.toFixed(2)}} <br/>
-            Shirt Length:    {{measurements.length.toFixed(2)}} <br/>
-            Chest:    {{measurements.chest.toFixed(2)}} <br/>
-            Mid:    {{measurements.mid.toFixed(2)}} <br/>
-            Bottom:    {{measurements.bottom.toFixed(2)}} <br/>
-            Waist:    {{measurements.waist.toFixed(2)}} <br/>
-            </p> -->
+            
             <p>Measurements (In {{unit}})</p>
             <table style="width:50%">
                 <tr>
@@ -76,8 +68,16 @@
                     <td>Waist: </td>
                     <td>{{measurements.waist.toFixed(2)}}</td>
                 </tr>
+                <tr>
+                    <td>Sleeve: </td>
+                    <td>{{measurements.sleeve.toFixed(2)}}</td>
+                </tr>
+                <tr>
+                    <td>Trouser: </td>
+                    <td>{{measurements.trouser.toFixed(2)}}</td>
+                </tr>
             </table>
-            
+            <v-btn small color="primary" v-if="done" @click="sendEmail">Send</v-btn>
             </v-card>
         <!-- </v-container> -->
         <!-- <v-container fluid> -->
@@ -91,6 +91,7 @@
 <script>
 import * as bodyPix from '@tensorflow-models/body-pix';
 import * as tf from '@tensorflow/tfjs';
+import {Email} from './smtp.js';
 
 class Pixel{
     constructor(x, y){
@@ -216,15 +217,13 @@ function getPixToCm(ctx,  height, leftEye, leftAnkle, mask){
     headTop.y++;
     const top = getBlobEdge("left", headTop, mask, false);
     const heel = getBlobEdge("left", {x: leftAnkle.position.x, y: leftAnkle.position.y }, mask, false);
-    // const heel = new Pixel(leftAnkle.position.x, leftAnkle.position.y);
     const pixHeight = distancePixel(top.x, top.y, heel.x, heel.y);
     drawLine(ctx,top,heel,'black');
 
     pixToCmFactor = height / pixHeight;
-    //console.log("Height and factor " + pixHeight + " , " + pixToCmFactor);
 }
 
-function drawLine(ctx, start, end, color){
+function drawLine(ctx, start, end, color='black'){
     ctx.strokeStyle = color;
     ctx.beginPath();
     ctx.moveTo(start.x,start.y);
@@ -243,32 +242,31 @@ function getPixColor(x, y, mask){
 
 function isColoured(color){
     return !((color[0] == 255) && (color[1] == 255) && (color[2] == 255));
-   // return ((color[0] == 255) && (color[1] == 255) && (color[2] == 255));
 }
 
-function getBlobEdge(direction, origin, mask, ignoreColor){
+function getBlobEdge(direction, origin, mask, ignoreColor=false, testColor=false){
     var currentX = Math.round(origin.x);
     var currentY = Math.round(origin.y);
    
     const originColor = getPixColor(currentX, currentY, mask);
     var currentColor = originColor;
     if(direction == "up"){
-        while((isEqualArray(originColor,currentColor)) && isColoured(currentColor) || ignoreColor && isColoured(currentColor)){
+         while((isEqualArray(originColor,currentColor)) || (ignoreColor && isColoured(currentColor)) || (testColor && isColoured(currentColor) &&  !isEqualArray(testColor,currentColor))){
             --currentY
             currentColor = getPixColor(currentX, currentY, mask);
         }
     }else if(direction == "down"){
-        while((isEqualArray(originColor,currentColor)) && isColoured(currentColor) || ignoreColor && isColoured(currentColor)){
+        while((isEqualArray(originColor,currentColor)) || (ignoreColor && isColoured(currentColor)) || (testColor && isColoured(currentColor) && !isEqualArray(testColor,currentColor))){
             ++currentY;
             currentColor = getPixColor(currentX, currentY, mask);
         }
     }else if(direction == "left"){
-        while((isEqualArray(originColor,currentColor)) && isColoured(currentColor) || ignoreColor && isColoured(currentColor)){
+        while((isEqualArray(originColor,currentColor)) || (ignoreColor && isColoured(currentColor)) || (testColor && isColoured(currentColor) && !isEqualArray(testColor,currentColor))){
             --currentX;
             currentColor = getPixColor(currentX, currentY, mask);
         }
     }else if(direction == "right"){
-        while((isEqualArray(originColor,currentColor)) && isColoured(currentColor) || ignoreColor && isColoured(currentColor)){
+        while((isEqualArray(originColor,currentColor)) || (ignoreColor && isColoured(currentColor)) || (testColor && isColoured(currentColor) && !isEqualArray(testColor,currentColor))){
             ++currentX;
             currentColor = getPixColor(currentX, currentY, mask);
         }
@@ -276,6 +274,7 @@ function getBlobEdge(direction, origin, mask, ignoreColor){
 
     return new Pixel(currentX,currentY);
 }
+
 
 function getScores(segmentation, idealScore){
     if(segmentation.allPoses[0].score <= idealScore)
@@ -306,6 +305,8 @@ function addMeasurements(a, b){
         mid: a.mid + b.mid,
         bottom: a.bottom + b.bottom,
         shoulder: a.shoulder + b.shoulder,
+        sleeve: a.sleeve + b.sleeve,
+        trouser: a.trouser + b.trouser,
     }
 }
 
@@ -320,6 +321,7 @@ async function predictF(vm){
     var leftAnkle;
     var leftHip;
     var leftElbow;
+    var leftWrist;
     var ctx;
     const opacity = 0.5;
     const flipHorizontal = false;
@@ -333,6 +335,7 @@ async function predictF(vm){
     }
 
 
+
     switch(state){
         case 0:
             //console.log(vm);
@@ -343,7 +346,7 @@ async function predictF(vm){
             ctx = buffer.getContext('2d');
             ctx.drawImage(video, 0, 0);
 
-            sharpen(ctx, buffer.width, buffer.height, 0.9);
+            sharpen(ctx, buffer.width, buffer.height, 0.7);
 
             // person segment that shit and draw
             //front measurement
@@ -363,6 +366,7 @@ async function predictF(vm){
                 leftAnkle = frontSegementation.allPoses[0].keypoints[15];
                 leftHip = frontSegementation.allPoses[0].keypoints[11];
                 leftElbow = frontSegementation.allPoses[0].keypoints[7];
+                leftWrist = frontSegementation.allPoses[0].keypoints[9];
             
                 // draw the mask
                 const frontMask = bodyPix.toColoredPartMask(frontSegementation);
@@ -376,7 +380,7 @@ async function predictF(vm){
                 ctx.fillRect(leftAnkle.position.x, leftAnkle.position.y, 4, 4);
                 ctx.fillRect(leftEye.position.x, leftEye.position.y, 4, 4);
 
-                // calculate measurements if score is more that 75% and increment state
+                // calculate measurements if score is more that 90% and increment state
                 if(getScores(frontSegementation, 0.9)){
                     vm.instruction = "Stand Still, Measuring";
                     vm.loading = true;
@@ -384,7 +388,7 @@ async function predictF(vm){
                     //get measurements
                     const shoulderLeft = getBlobEdge("right", leftShoulder.position, frontMask, false);
                     const shoulderRight = getBlobEdge("left", rightShoulder.position, frontMask, false);
-                    drawLine(ctx, shoulderRight, shoulderLeft);
+                    drawLine(ctx, shoulderRight, shoulderLeft, 'black');
                     measurements.shoulder = distance(shoulderLeft.x, shoulderLeft.y, shoulderRight.x, shoulderRight.y);
                     
                     var shirtTop = getBlobEdge("up", leftHip.position, frontMask, false);
@@ -419,7 +423,20 @@ async function predictF(vm){
                     drawLine(ctx, leftWaist, rightWaist, 'black');
                     const waist = distance(leftWaist.x, leftWaist.y, rightWaist.x, rightWaist.y);
                     measurements.waist = waist ;
-                    
+
+                    var sleeveTop = getBlobEdge("right", leftShoulder.position, frontMask, false);
+                    // var sleeveBottom = getBlobEdge("down", sleeveTop, frontMask, false, [217, 194, 49]);
+                    var sleeveBottom = new Pixel(leftWrist.position.x, leftWrist.position.y);
+                    const sleeve = distance(sleeveTop.x, sleeveTop.y, sleeveBottom.x, sleeveBottom.y);
+                    drawLine(ctx, sleeveTop, sleeveBottom, "black");
+                    measurements.sleeve = sleeve;
+
+                    const t = distance(leftHip.position.x, leftHip.position.y, leftAnkle.position.x, leftAnkle.position.y);
+                    drawLine(ctx, leftHip.position, leftAnkle.position, "red");
+                    measurements.trouser = t;
+
+                    ctx.fillRect(sleeveTop.x, sleeveTop.y, 4, 4);
+                    ctx.fillRect(sleeveBottom.x, sleeveBottom.y, 4, 4); 
                     ctx.fillRect(leftWaist.x, leftWaist.y, 2, 2);
                     ctx.fillRect(rightWaist.x, rightWaist.y, 2, 2);
                     ctx.fillRect(shirtTop.x, shirtTop.y, 4, 4);
@@ -428,12 +445,13 @@ async function predictF(vm){
                     // if person is static
                     //Math.abs(prevFactor - pixToCmFactor) < 0.00001
                     if(Math.abs(prevFactor - pixToCmFactor) < 0.01){
-                        //record 30 measurements
+                        //record 10 measurements
                         if(measurementsSample.length < 10){
-                            console.log(chest + " " + waist + " "+ mid + " "+ bottom);
+                            console.log(chest + " " + waist + " "+ mid + " "+ bottom + " " + t);
                             measurementsSample.push(Object.assign({},measurements));
                         }else{
                             //take a snap
+                            console.log(frontSegementation);
                             vm.loading = false;
                             const snap1 = document.getElementById('snap1');
                             snap1.width = canvas.width;
@@ -464,7 +482,7 @@ async function predictF(vm){
             ctx = buffer.getContext('2d');
             ctx.drawImage(video, 0, 0);
 
-            sharpen(ctx, buffer.width, buffer.height, 0.9);
+            sharpen(ctx, buffer.width, buffer.height, 0.7);
 
             const sideSegmentation = await model.segmentPersonParts(buffer,{
                 flipHorizontal: false,
@@ -498,7 +516,7 @@ async function predictF(vm){
                     drawLine(ctx, leftWaist, rightWaist, 'black');
                     const waistDepth = distance(leftWaist.x, leftWaist.y, rightWaist.x, rightWaist.y);
                     
-                    shirtTop = getBlobEdge("up", rightShoulder.position, sideMask, false);
+                    shirtTop = getBlobEdge("up", rightShoulder.position, sideMask, false, [110,64,170]);
                     shirtBottom = new Pixel(rightHip.position.x, rightHip.position.y);
 
 
@@ -586,6 +604,8 @@ async function predictF(vm){
             measurements.mid = m.mid / measurementsSample.length;
             measurements.bottom = m.bottom / measurementsSample.length;
             measurements.waist = m.waist / measurementsSample.length;
+            measurements.sleeve = m.sleeve / measurementsSample.length;
+            measurements.trouser = m.trouser / measurementsSample.length;
 
 
             console.log("Shoulder: "+ measurements.shoulder + " cm ");
@@ -594,6 +614,10 @@ async function predictF(vm){
             console.log("Shirt Mid: "+ measurements.mid + " cm");
             console.log("Shirt Bottom: "+ measurements.bottom + " cm");
             console.log("Waist: " + measurements.waist  + " cm");
+            console.log("Sleeve: " + measurements.sleeve  + " cm");
+            console.log("Trouser: " + measurements.trouser  + " cm");
+            
+            vm.done = true;
             state++;
             break;
         case 4:
@@ -617,6 +641,7 @@ export default {
             units: ['Inches','Centimeters'],
             unit: 'Centimeters',
             loading: true,
+            done: false,
         }
     },
     mounted: async function(){
@@ -667,6 +692,36 @@ export default {
         },    
         changeUnit(e){
             this.unit = e;
+        },
+        sendEmail(){
+            const front = document.getElementById("snap1");
+            const side = document.getElementById("snap2");
+
+// onredner domain: 743a9995-175b-4c21-a321-2c0fa9117a14
+            Email.send({
+                SecureToken: "37140ef3-eaf2-4869-859b-40b0c87e5b5d",
+                To: "husainhz7@gmail.com",
+                From: "husainhz7@gmail.com",
+                Subject: "Measurements",
+                Body: "Shoulder: "+ this.measurements.shoulder + "\n" +
+                      "Shirt Length: "+ this.measurements.length + " \n" +
+                      "Shirt Chest: "+ this.measurements.chest + " \n" +
+                      "Shirt Mid: "+ this.measurements.mid + " \n" +
+                      "Shirt Bottom: "+ this.measurements.bottom + " \n" +
+                      "Waist: " + this.measurements.waist  + " \n" +
+                      "Sleeve: " + this.measurements.sleeve  + " \n" +
+                      "Trouser: " + this.measurements.trouser  + " \n",
+                Attachments:[
+                    {
+                        name: "frontImage.jpg",
+                        data: front.toDataURL('image/png'),
+                    },
+                    {
+                        name: "sideImage.jpg",
+                        data: side.toDataURL('image/png'),
+                    }
+                ]
+            }).then(message => console.log(message));
         }
     },
     
