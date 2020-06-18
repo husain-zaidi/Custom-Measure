@@ -13,33 +13,45 @@
                         append-outer-icon="mdi-chevron-right-box" 
                         @click:append-outer="submitHeight">
             </v-text-field>
-            <table style="width:50%">
-                <tr>
-                    <td>Shoulder Length: </td>
-                    <td>{{measurements.shoulder.toFixed(2)}}</td>
-                </tr>
-                 <tr>
-                    <td>Shirt Length: </td>
-                    <td>{{measurements.length.toFixed(2)}}</td>
-                </tr>
-                 <tr>
-                    <td>Chest: </td>
-                    <td>{{measurements.chest.toFixed(2)}}</td>
-                </tr>
-                 <tr>
-                    <td>Mid: </td>
-                    <td>{{measurements.mid.toFixed(2)}}</td>
-                </tr>
-                 <tr>
-                    <td>Bottom: </td>
-                    <td>{{measurements.bottom.toFixed(2)}}</td>
-                </tr>
-                 <tr>
-                    <td>Waist: </td>
-                    <td>{{measurements.waist.toFixed(2)}}</td>
-                </tr>
-            </table>
-            <v-btn small color="primary" v-if="done" @click="sendEmail">Send</v-btn>
+            <v-card class="d-flex justify-center align-center flex-column" >
+            
+                <p>Measurements</p>
+                <table style="width:50%">
+                    <tr>
+                        <td>Shoulder Length: </td>
+                        <td>{{measurements.shoulder.toFixed(2)}}</td>
+                    </tr>
+                    <tr>
+                        <td>Shirt Length: </td>
+                        <td>{{measurements.length.toFixed(2)}}</td>
+                    </tr>
+                    <tr>
+                        <td>Chest: </td>
+                        <td>{{measurements.chest.toFixed(2)}}</td>
+                    </tr>
+                    <tr>
+                        <td>Mid: </td>
+                        <td>{{measurements.mid.toFixed(2)}}</td>
+                    </tr>
+                    <tr>
+                        <td>Bottom: </td>
+                        <td>{{measurements.bottom.toFixed(2)}}</td>
+                    </tr>
+                    <tr>
+                        <td>Waist: </td>
+                        <td>{{measurements.waist.toFixed(2)}}</td>
+                    </tr>
+                    <tr>
+                        <td>Sleeve: </td>
+                        <td>{{measurements.sleeve.toFixed(2)}}</td>
+                    </tr>
+                    <tr>
+                        <td>Trouser: </td>
+                        <td>{{measurements.trouser.toFixed(2)}}</td>
+                    </tr>
+                </table>
+                <v-btn small color="primary" v-if="done" @click="sendEmail">Send</v-btn>
+            </v-card>
         </v-container>
         <v-container>
             <canvas id="canvas1"></canvas>

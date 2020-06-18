@@ -13,7 +13,6 @@ window.onload = (e) => {
         render: h => h(app),
         vuetify: new Vuetify( {
             theme: {
-                dark: true,
             },
         }),
     })

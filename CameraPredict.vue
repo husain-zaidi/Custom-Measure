@@ -6,18 +6,8 @@
             <canvas id="buffer"></canvas>
             <!-- "d-flex justify-center align-center flex-column" -->
             <v-card class="d-flex justify-center align-center flex-column">
-                <p class="my-5">{{instruction}}</p>
-                
-                <canvas  id="output"></canvas>
-                 <v-progress-circular
-                        v-if="loading"
-                        indeterminate
-                        color="primary"
-                ></v-progress-circular>
-            </v-card>   
-            <v-card>
-                <v-row align="center">
-                    <v-col class="d-flex" cols="12" sm="6"> 
+                 <v-row class="d-flex justify-center align-center">
+                    <v-col cols="4" xs="3"> 
                         <v-text-field 
                             label="height"
                             type="number" 
@@ -27,7 +17,7 @@
                             class="my-5"
                         ></v-text-field>
                     </v-col>
-                    <v-col class="d-flex" cols="12" sm="6"> 
+                    <v-col cols="5" xs="3"> 
                         <v-select
                             :items="units"
                             label="Unit"
@@ -39,6 +29,17 @@
                         ></v-select>
                     </v-col>
                 </v-row>
+                <p class="my-5">{{instruction}}</p>
+                
+                <canvas  id="output"></canvas>
+                 <v-progress-circular
+                        v-if="loading"
+                        indeterminate
+                        color="primary"
+                ></v-progress-circular>
+            </v-card>   
+            <v-card  >
+               
             </v-card>
             <v-card class="d-flex justify-center align-center flex-column" >
             
