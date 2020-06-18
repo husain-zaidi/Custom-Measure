@@ -54,6 +54,7 @@
 import * as bodyPix from '@tensorflow-models/body-pix';
 import * as tf from '@tensorflow/tfjs';
 import {Email} from './smtp.js';
+const axios = require('axios');
 
 class Pixel{
     constructor(x, y){
@@ -460,32 +461,76 @@ export default {
             const side = document.getElementById("canvas2");
 
 // onredner domain: 743a9995-175b-4c21-a321-2c0fa9117a14
-// SSL all domains 
+// SSL all domains 37140ef3-eaf2-4869-859b-40b0c87e5b5d
 // non ssl all domains: 4b888be0-f1ee-401c-874a-16a4ec73e23c
-            Email.send({
-                SecureToken: "37140ef3-eaf2-4869-859b-40b0c87e5b5d",
-                To: "husainhz7@gmail.com",
-                From: "husainhz7@gmail.com",
-                Subject: "Measurements",
-                Body: "Shoulder: "+ this.measurements.shoulder + "\n" +
+// elasticmail: f5a02a6a-714f-401c-8bf8-863e8c2715ef
+//cfac9bed-ed3b-40eb-a1a3-750342677d87
+            // Email.send({
+            //     SecureToken: "cfac9bed-ed3b-40eb-a1a3-750342677d87",
+            //     To: "husainhz7@gmail.com",
+            //     From: "husainhz7@gmail.com",
+            //     Subject: "Measurements",
+            //     Body: "Shoulder: "+ this.measurements.shoulder + "\n" +
+            //           "Shirt Length: "+ this.measurements.length + " \n" +
+            //           "Shirt Chest: "+ this.measurements.chest + " \n" +
+            //           "Shirt Mid: "+ this.measurements.mid + " \n" +
+            //           "Shirt Bottom: "+ this.measurements.bottom + " \n" +
+            //           "Waist: " + this.measurements.waist  + " \n" +
+            //           "Sleeve: " + this.measurements.sleeve  + " \n" +
+            //           "Trouser: " + this.measurements.trouser  + " \n",
+            //     Attachments:[
+            //         {
+            //             name: "frontImage.jpg",
+            //             data: front.toDataURL('image/png'),
+            //         },
+            //         {
+            //             name: "sideImage.jpg",
+            //             data: side.toDataURL('image/png'),
+            //         }
+            //     ]
+            // }).then(message => console.log(message));
+
+            var formdata = new FormData();
+            formdata.set('measurements',"Shoulder: "+ this.measurements.shoulder + "\n" +
                       "Shirt Length: "+ this.measurements.length + " \n" +
                       "Shirt Chest: "+ this.measurements.chest + " \n" +
                       "Shirt Mid: "+ this.measurements.mid + " \n" +
                       "Shirt Bottom: "+ this.measurements.bottom + " \n" +
                       "Waist: " + this.measurements.waist  + " \n" +
                       "Sleeve: " + this.measurements.sleeve  + " \n" +
-                      "Trouser: " + this.measurements.trouser  + " \n",
-                Attachments:[
-                    {
-                        name: "frontImage.jpg",
-                        data: front.toDataURL('image/png'),
-                    },
-                    {
-                        name: "sideImage.jpg",
-                        data: side.toDataURL('image/png'),
-                    }
-                ]
-            }).then(message => console.log(message));
+                      "Trouser: " + this.measurements.trouser  + " \n" + "In "+ this.unit + "\n");
+            front.toBlob(function (blob) {
+                    var newImg = document.createElement('img'),
+                    url = URL.createObjectURL(blob);
+                    newImg.src = url;
+                    formdata.append('frontImage', newImg); 
+                }
+            );
+
+            side.toBlob(function (blob) {
+                    var newImg = document.createElement('img'),
+                    url = URL.createObjectURL(blob);
+                    newImg.src = url;
+                    formdata.append('sideImage', newImg); 
+                }
+            );
+                
+            axios({
+                method: 'post',
+                url: 'https://husainzaidi.studio:5000/',
+                data: formdata,
+                headers: {'Content-Type': 'multipart/form-data' }
+                })
+                .then(function (response) {
+                    //handle success
+                    console.log(response);
+                })
+                .catch(function (response) {
+                    //handle error
+                    console.log(response);
+            });
+
+
         }
     }
     
