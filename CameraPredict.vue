@@ -662,19 +662,17 @@ export default {
         } */
         model = await bodyPix.load();
         console.log('Model loaded');
-        navigator.getUserMedia = (navigator.getUserMedia ||
-                        navigator.webkitGetUserMedia ||
-                        navigator.mozGetUserMedia || 
-                        navigator.msGetUserMedia);
-                        
+
         if(navigator.mediaDevices.getUserMedia){
-            navigator.mediaDevices.getUserMedia({video: {facingMode: { exact: "user" }}, audio: false})
+            navigator.mediaDevices.getUserMedia({video: {facingMode: "user"}, audio: false})
                 .then(function(stream){
                     video.srcObject = stream;
                 })
                 .catch(function(err){
                     console.error("Camera error: "+err);
                 })
+        }else {
+            console.log("NO CAMERA FOUND");
         }
 
         video.onloadedmetadata = () => {
