@@ -662,6 +662,11 @@ export default {
         } */
         model = await bodyPix.load();
         console.log('Model loaded');
+        navigator.getUserMedia = (navigator.getUserMedia ||
+                        navigator.webkitGetUserMedia ||
+                        navigator.mozGetUserMedia || 
+                        navigator.msGetUserMedia);
+                        
         if(navigator.mediaDevices.getUserMedia){
             navigator.mediaDevices.getUserMedia({video: {facingMode: { exact: "user" }}, audio: false})
                 .then(function(stream){
