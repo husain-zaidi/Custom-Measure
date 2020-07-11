@@ -27,7 +27,7 @@
                                 <v-card min-height="400px" class="d-flex justify-center align-center flex-column">
                                     <h1>Welcome to Custom Measure</h1>
                                     <p>Follow the next steps to prepare and measure your body. This tool approximates your body measurements using Artificial intelligence</p>
-                                    <p class="text-caption">Note: By using this app you agree that data submitted in this app may be used for diagnostic purposes</p>
+                                    <!-- <p class="text-caption">Note: By using this app you agree that data submitted in this app may be used for diagnostic purposes</p> -->
                                     <v-btn
                                         color="primary"
                                         @click="currentStep = 2"

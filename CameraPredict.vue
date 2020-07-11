@@ -78,7 +78,7 @@
                     <td>{{measurements.trouser.toFixed(2)}}</td>
                 </tr>
             </table>
-            <v-btn small color="primary" v-if="done" @click="sendEmail">Send</v-btn>
+            <!-- <v-btn small color="primary" v-if="done" @click="sendEmail">Send</v-btn> -->
             </v-card>
         <!-- </v-container> -->
         <!-- <v-container fluid> -->
