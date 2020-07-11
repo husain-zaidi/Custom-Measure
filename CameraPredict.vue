@@ -29,9 +29,9 @@
                         ></v-select>
                     </v-col>
                 </v-row>
-                <p class="my-5">{{instruction}}</p>
+                <v-alert type="info">{{instruction}}</v-alert>
                 
-                <canvas  id="output"></canvas>
+                <canvas  width="480" height="480" id="output"></canvas>
                  <v-progress-circular
                         v-if="loading"
                         indeterminate
@@ -43,7 +43,7 @@
             </v-card>
             <v-card class="d-flex justify-center align-center flex-column" >
             
-            <p>Measurements (In {{unit}})</p>
+            <p class="font-weight-medium">Measurements (In {{unit}})</p>
             <table style="width:50%">
                 <tr>
                     <td>Shoulder Length: </td>
@@ -336,7 +336,8 @@ async function predictF(vm){
     if(isMobile()){
         internalResolution = 'medium';
     }
-
+    buffer.width = canvas.width;
+    buffer.height = canvas.height;
 
 
     switch(state){
@@ -347,8 +348,12 @@ async function predictF(vm){
             vm.instruction = "Stand Straight and stay still, Make sure your full length is in view of camera";
             
             ctx = buffer.getContext('2d');
-            ctx.drawImage(video, 0, 0);
-
+            // ctx.drawImage(video, 0, 0);
+            //resize?
+            var scale = Math.max(canvas.width / video.videoWidth, canvas.height / video.videoHeight);
+            var x = (canvas.width / 2) - (video.videoWidth / 2) * scale;
+            var y = (canvas.height / 2) - (video.videoHeight / 2) * scale;
+            ctx.drawImage(video, x, y, video.videoWidth  * scale, video.videoHeight  * scale)
             sharpen(ctx, buffer.width, buffer.height, 0.7);
 
             // person segment that shit and draw
@@ -483,8 +488,11 @@ async function predictF(vm){
             vm.instruction = "Turn right ➡, make sure you're fully facing towards your right";
 
             ctx = buffer.getContext('2d');
-            ctx.drawImage(video, 0, 0);
-
+            // ctx.drawImage(video, 0, 0);
+            var scale = Math.max(canvas.width / video.videoWidth, canvas.height / video.videoHeight);
+            var x = (canvas.width / 2) - (video.videoWidth / 2) * scale;
+            var y = (canvas.height / 2) - (video.videoHeight / 2) * scale;
+            ctx.drawImage(video, x, y, video.videoWidth  * scale, video.videoHeight  * scale)
             sharpen(ctx, buffer.width, buffer.height, 0.7);
 
             const sideSegmentation = await model.segmentPersonParts(buffer,{
@@ -669,17 +677,15 @@ export default {
                     video.srcObject = stream;
                 })
                 .catch(function(err){
-                    console.error("Camera error: "+err);
+                    console.error("Camera error: " + err + err.message);
                 })
         }else {
             console.log("NO CAMERA FOUND");
         }
 
         video.onloadedmetadata = () => {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            buffer.width = video.videoWidth;
-            buffer.height = video.videoHeight;
+            // canvas.width = video.videoWidth;
+            // canvas.height = video.videoHeight;
         }
 
         // Start Video frame segmentation and Measurment

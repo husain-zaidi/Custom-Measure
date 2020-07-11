@@ -38,7 +38,7 @@
                             </v-stepper-content>
                             <v-stepper-content step="2">
                                 <v-card min-height="400px" class="d-flex justify-center align-center flex-column">
-                                    <img src="img/SVG/Step2.svg"></img>
+                                    <img width=100% src="img/SVG/Step2.svg">
                                     <p>Make sure the room is well lit, wear fit clothes for accurate results</p>
                                     <v-btn
                                         color="primary"
@@ -50,7 +50,7 @@
                             </v-stepper-content>
                             <v-stepper-content step="3">
                                 <v-card min-height="400px" class="d-flex justify-center align-center flex-column">
-                                    <img src="img/SVG/Step3.svg"></img>
+                                    <img width=100%  src="img/SVG/Step3.svg">
                                     <p>Place Mobile on a chair or align webcam for full view of body.</p>
                                     <v-btn
                                         color="primary"
@@ -62,7 +62,7 @@
                             </v-stepper-content>
                             <v-stepper-content step="4">
                                 <v-card min-height="400px" class="d-flex justify-center align-center flex-column">
-                                    <img src="img/SVG/Step4.svg"></img>
+                                    <img width=100% src="img/SVG/Step4.svg">
                                     <p>Stand still in attention position for a few seconds and then turn to your right side when the prompt comes. Our AI will measure</p>
                                     <v-btn
                                         color="primary"
@@ -106,3 +106,9 @@ export default {
     }
 }
 </script>
+
+<style lang="css">
+img {
+    object-fit: contain;
+}
+</style>
