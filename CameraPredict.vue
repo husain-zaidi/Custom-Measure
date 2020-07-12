@@ -672,7 +672,7 @@ export default {
         console.log('Model loaded');
 
         if(navigator.mediaDevices.getUserMedia){
-            navigator.mediaDevices.getUserMedia({video: {facingMode: "user"}, audio: false})
+            navigator.mediaDevices.getUserMedia({video: true, audio: false})
                 .then(function(stream){
                     video.srcObject = stream;
                 })
