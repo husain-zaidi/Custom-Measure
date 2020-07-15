@@ -250,7 +250,14 @@ function isColoured(color){
 function getBlobEdge(direction, origin, mask, ignoreColor=false, testColor=false){
     var currentX = Math.round(origin.x);
     var currentY = Math.round(origin.y);
-   
+    if((currentY < 0 || currentY > mask.height) || (currentX < 0 || currentX > mask.width)){
+        
+        currentY =  Math.min(Math.max(currentY, 0), mask.height);
+        currentX =  Math.min(Math.max(currentX, 0), mask.width);
+        console.log(currentX + " " + currentY);
+        return new Pixel(currentX,currentY);
+    }
+
     const originColor = getPixColor(currentX, currentY, mask);
     var currentColor = originColor;
     if(direction == "up"){
@@ -287,6 +294,8 @@ function getScores(segmentation, idealScore){
     if(segmentation.allPoses[0].keypoints[6].score <= idealScore)
         return false;
     if(segmentation.allPoses[0].keypoints[1].score <= idealScore)
+        return false;
+    if(segmentation.allPoses[0].keypoints[3].score <= idealScore)
         return false;
     if(segmentation.allPoses[0].keypoints[15].score <= idealScore)
         return false;
@@ -393,6 +402,7 @@ async function predictF(vm){
                     vm.instruction = "Stand Still, Measuring";
                     vm.loading = true;
                     getPixToCm(ctx, measurements.height, leftEye, leftAnkle, frontMask);
+                    console.log(frontSegementation);
                     //get measurements
                     const shoulderLeft = getBlobEdge("right", leftShoulder.position, frontMask, false);
                     const shoulderRight = getBlobEdge("left", rightShoulder.position, frontMask, false);
@@ -455,7 +465,6 @@ async function predictF(vm){
                     if(Math.abs(prevFactor - pixToCmFactor) < 0.01){
                         //record 10 measurements
                         if(measurementsSample.length < 10){
-                            console.log(chest + " " + waist + " "+ mid + " "+ bottom + " " + t);
                             measurementsSample.push(Object.assign({},measurements));
                         }else{
                             //take a snap
@@ -670,6 +679,9 @@ export default {
         } */
         model = await bodyPix.load();
         console.log('Model loaded');
+        video.setAttribute('autoplay', '');
+        video.setAttribute('muted', '');
+        video.setAttribute('playsinline', '');
 
         if(navigator.mediaDevices.getUserMedia){
             navigator.mediaDevices.getUserMedia({video: true, audio: false})

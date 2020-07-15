@@ -1,14 +1,14 @@
 <template>
      <v-app>
-        <v-app-bar app>
-            <v-toolbar-title class="display-1 font-black"> Custom Measure </v-toolbar-title>
+        <v-app-bar dense app>
+            <v-toolbar-title class="font-black"><h3>Custom Measure</h3></v-toolbar-title>
 
         </v-app-bar>
         <v-content>
-            <v-tabs>
+            <!-- <v-tabs>
                 <v-tab>App</v-tab>
                 <v-tab>Upload Data</v-tab>
-                <v-tab-item>
+                <v-tab-item> -->
                     <v-stepper v-model="currentStep">
                         <v-stepper-header>
                             <v-stepper-step :complete="currentStep > 1" step="1">Welcome</v-stepper-step>
@@ -37,8 +37,8 @@
                                 </v-card>
                             </v-stepper-content>
                             <v-stepper-content step="2">
-                                <v-card min-height="400px" class="d-flex justify-center align-center flex-column">
-                                    <img width=100% src="img/SVG/Step2.svg">
+                                <v-card min-height="400px" max-height="680px" class="d-flex justify-center align-center flex-column">
+                                    <img width=80% src="img/SVG/Step2.svg">
                                     <p>Make sure the room is well lit, wear fit clothes for accurate results</p>
                                     <v-btn
                                         color="primary"
@@ -49,8 +49,8 @@
                                 </v-card>
                             </v-stepper-content>
                             <v-stepper-content step="3">
-                                <v-card min-height="400px" class="d-flex justify-center align-center flex-column">
-                                    <img width=100%  src="img/SVG/Step3.svg">
+                                <v-card min-height="400px" max-height="680px" class="d-flex justify-center align-center flex-column">
+                                    <img width=80%  src="img/SVG/Step3.svg">
                                     <p>Place Mobile on a chair or align webcam for full view of body.</p>
                                     <v-btn
                                         color="primary"
@@ -61,8 +61,8 @@
                                 </v-card>
                             </v-stepper-content>
                             <v-stepper-content step="4">
-                                <v-card min-height="400px" class="d-flex justify-center align-center flex-column">
-                                    <img width=100% src="img/SVG/Step4.svg">
+                                <v-card min-height="400px" max-height="680px" class="d-flex justify-center align-center flex-column">
+                                    <img width=80% src="img/SVG/Step4.svg">
                                     <p>Stand still in attention position for a few seconds and then turn to your right side when the prompt comes. Our AI will measure</p>
                                     <v-btn
                                         color="primary"
@@ -77,11 +77,11 @@
                             </v-stepper-content>
                         </v-stepper-items>
                     </v-stepper>
-                </v-tab-item>
+                <!-- </v-tab-item>
                 <v-tab-item>
                     <app-upload></app-upload>
-                </v-tab-item>
-            </v-tabs>
+                </v-tab-item> 
+            </v-tabs>-->
            
         </v-content>
         
@@ -110,5 +110,6 @@ export default {
 <style lang="css">
 img {
     object-fit: contain;
+    max-height: 500px;
 }
 </style>
