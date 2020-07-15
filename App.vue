@@ -19,7 +19,9 @@
                             <v-divider></v-divider>
                             <v-stepper-step :complete="currentStep > 4" step="4">Steps</v-stepper-step>
                             <v-divider></v-divider>
-                            <v-stepper-step step="5">Measure</v-stepper-step>
+                            <v-stepper-step step="5">Turn</v-stepper-step>
+                            <v-divider></v-divider>
+                            <v-stepper-step step="6">Measure</v-stepper-step>
                         </v-stepper-header>
 
                         <v-stepper-items>
@@ -37,7 +39,7 @@
                                 </v-card>
                             </v-stepper-content>
                             <v-stepper-content step="2">
-                                <v-card min-height="400px" max-height="680px" class="d-flex justify-center align-center flex-column">
+                                <v-card min-height="400px" class="d-flex justify-center align-center flex-column">
                                     <img width=80% src="img/SVG/Step2.svg">
                                     <p>Make sure the room is well lit, wear fit clothes for accurate results</p>
                                     <v-btn
@@ -49,7 +51,7 @@
                                 </v-card>
                             </v-stepper-content>
                             <v-stepper-content step="3">
-                                <v-card min-height="400px" max-height="680px" class="d-flex justify-center align-center flex-column">
+                                <v-card min-height="400px" class="d-flex justify-center align-center flex-column">
                                     <img width=80%  src="img/SVG/Step3.svg">
                                     <p>Place Mobile on a chair or align webcam for full view of body.</p>
                                     <v-btn
@@ -61,9 +63,9 @@
                                 </v-card>
                             </v-stepper-content>
                             <v-stepper-content step="4">
-                                <v-card min-height="400px" max-height="680px" class="d-flex justify-center align-center flex-column">
+                                <v-card min-height="400px" class="d-flex justify-center align-center flex-column">
                                     <img width=80% src="img/SVG/Step4.svg">
-                                    <p>Stand still in attention position for a few seconds and then turn to your right side when the prompt comes. Our AI will measure</p>
+                                    <p>Stand <strong>still</strong> in attention position for a few seconds and then turn to your right side when the prompt comes. Our AI will measure</p>
                                     <v-btn
                                         color="primary"
                                         @click="currentStep = 5"
@@ -73,6 +75,18 @@
                                 </v-card>
                             </v-stepper-content>
                             <v-stepper-content step="5">
+                                <v-card min-height="400px" class="d-flex justify-center align-center flex-column">
+                                    <img width=80% src="img/SVG/Step5.svg">
+                                    <p>Turn to <strong>your right</strong> side when instructed</p>
+                                    <v-btn
+                                        color="primary"
+                                        @click="currentStep = 6"
+                                    >
+                                    Continue
+                                    </v-btn>
+                                </v-card>
+                            </v-stepper-content>
+                            <v-stepper-content step="6">
                                  <camera-predict></camera-predict>
                             </v-stepper-content>
                         </v-stepper-items>
