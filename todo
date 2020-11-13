@@ -17,3 +17,9 @@ WAIST
 25 38 101 
 CHEST
 25 35 97
+
+# Shopify integration
+1. Koa integration
+2. App proxy
+3. Minor modifications for flow
+4. App page and payment
