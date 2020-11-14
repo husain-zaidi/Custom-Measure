@@ -8,10 +8,11 @@ import routerRender from'./Router'
 
 const routes = [
     { path: '/custom-measure', component: app },
-    { path: '/', component: app }
+    { path: '/', redirect: '/custom-measure' }
   ]
   
 const router = new VueRouter({
+    mode: 'history',
     routes // short for `routes: routes`
 })
   
@@ -23,7 +24,6 @@ window.onload = (e) => {
     new Vue({
         el: '#app',
         router: router,
-        render: h => h(app),
         vuetify: new Vuetify( {
             theme: {
             },
