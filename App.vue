@@ -27,7 +27,7 @@
                         <v-stepper-items>
                             <v-stepper-content step="1">
                                 <v-card min-height="400px" class="d-flex justify-center align-center flex-column">
-                                    <h1>Welcome to Custom Measure</h1>
+                                    <h1>Welcome to Custom-Measure</h1>
                                     <p>Follow the next steps to prepare and measure your body. This tool approximates your body measurements using Artificial intelligence</p>
                                     <!-- <p class="text-caption">Note: By using this app you agree that data submitted in this app may be used for diagnostic purposes</p> -->
                                     <v-btn
@@ -53,7 +53,7 @@
                             <v-stepper-content step="3">
                                 <v-card min-height="400px" class="d-flex justify-center align-center flex-column">
                                     <img width=80%  src="img/SVG/Step3.svg">
-                                    <p>Place Mobile on a chair or align webcam for full view of body.</p>
+                                    <p>Place the Mobile on a chair or align the laptop's webcam for full view of body.</p>
                                     <v-btn
                                         color="primary"
                                         @click="currentStep = 4"
@@ -65,7 +65,7 @@
                             <v-stepper-content step="4">
                                 <v-card min-height="400px" class="d-flex justify-center align-center flex-column">
                                     <img width=80% src="img/SVG/Step4.svg">
-                                    <p>Stand <strong>still</strong> in attention position for a few seconds and then turn to your right side when the prompt comes. Our AI will measure</p>
+                                    <p>Stand <strong>still</strong> in attention position for a few seconds and then turn to your right side when the prompt comes. Our AI will estimate the measurements</p>
                                     <v-btn
                                         color="primary"
                                         @click="currentStep = 5"
