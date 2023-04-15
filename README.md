@@ -4,7 +4,7 @@ This repository contains the source code for a VueJS static website that calcula
 
 Try here: https://custom-measure.onrender.com
 
-![App Screenshot](img\app_screenshot.png)
+![App Screenshot](img/app_screenshot.png)
 
 ## Features
 
